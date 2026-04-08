@@ -1,0 +1,56 @@
+# ── 실제 데이터 / 개인정보 ──────────────────────────
+# 실 운영 DB (사번·이메일 등 개인정보 포함)
+assets.db
+*.db
+*.sqlite
+*.sqlite3
+
+# 엑셀 원본 (사내 자산 데이터)
+*.xlsx
+*.xls
+*.csv
+
+# 서버 로그 (접속 기록 등)
+server.log
+*.log
+
+# ── Python ──────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# 가상환경
+venv/
+.venv/
+env/
+.env/
+
+# ── 환경변수 / 시크릿 ────────────────────────────────
+.env
+.env.*
+*.env
+secrets.py
+
+# ── vendor (pip install 후 재생성 가능) ─────────────
+# vendor/ 폴더를 통째로 올릴지 여부는 선택사항:
+# 인터넷 없는 사내 환경이라면 vendor/ 포함을 권장합니다.
+# 올리지 않으려면 아래 주석을 해제하세요:
+# vendor/
+
+# ── OS / 에디터 ──────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+.idea/
+.vscode/
+*.code-workspace
+
+# ── 테스트 / 임시 ────────────────────────────────────
+# 사내 파일 경로·OneDrive 경로 하드코딩 포함
+test_upload.py
+import_excel.py
+*.bat
