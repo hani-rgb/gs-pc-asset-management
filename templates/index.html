@@ -119,15 +119,15 @@ body {
 /* ── 통계 바 ── */
 .stat-row {
   display: flex; align-items: center;
-  padding: 11px 0; gap: 10px;
+  padding: 10px 0; gap: 0;
 }
-.stat-row + .stat-row { border-top: 1px solid #f5f7fa; }
-.stat-label { font-size: 13px; font-weight: 600; color: #4b5563; min-width: 0; flex-shrink: 0; white-space: nowrap; }
+.stat-row + .stat-row { border-top: 1px solid #f3f5f8; }
+.stat-label { font-size: 13px; font-weight: 600; color: #4b5563; width: 80px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stat-bar-wrap {
-  flex: 1; background: #f1f4f9; border-radius: 99px; height: 10px; overflow: hidden; min-width: 40px;
+  width: 120px; flex-shrink: 0; background: #eef1f6; border-radius: 99px; height: 8px; overflow: hidden; margin: 0 10px;
 }
 .stat-bar {
-  height: 10px; border-radius: 99px;
+  height: 8px; border-radius: 99px;
   transition: width 0.75s cubic-bezier(0.4,0,0.2,1);
   position: relative;
 }
@@ -146,6 +146,7 @@ body {
 .bar-status-반납   { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
 .bar-status-대여중 { background: linear-gradient(90deg, #0891b2, #67e8f9); }
 .bar-status-폐기   { background: linear-gradient(90deg, #6b7280, #9ca3af); }
+.bar-status-교체검토 { background: linear-gradient(90deg, #dc2626, #f87171); }
 /* 기기종류별 바 색상 — 파란색 계열 통일 */
 .bar-type-노트북   { background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
 .bar-type-Mac      { background: linear-gradient(90deg, #0369a1, #38bdf8); }
@@ -153,8 +154,31 @@ body {
 .bar-type-데스크톱 { background: linear-gradient(90deg, #1e40af, #93c5fd); }
 .bar-type-기타     { background: linear-gradient(90deg, #075985, #7dd3fc); }
 
-.stat-count { font-size: 16px; font-weight: 800; color: #1e2532; flex-shrink: 0; text-align: right; letter-spacing: -0.5px; white-space: nowrap; }
-.stat-pct { font-size: 11px; font-weight: 700; color: #94a3b8; flex-shrink: 0; text-align: right; white-space: nowrap; min-width: 30px; }
+.stat-count { font-size: 16px; font-weight: 800; color: #1e2532; flex-shrink: 0; text-align: right; letter-spacing: -0.5px; white-space: nowrap; width: 60px; }
+.stat-pct { font-size: 11px; font-weight: 700; color: #94a3b8; flex-shrink: 0; text-align: right; white-space: nowrap; width: 36px; }
+
+/* ── Stacked Layout (자산 구성) ── */
+.stat-row-stacked { padding: 7px 0; }
+.stat-row-stacked + .stat-row-stacked { border-top: 1px solid #f3f5f8; }
+.stat-row-stacked .stacked-top {
+  display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px;
+}
+.stat-row-stacked .stacked-label { font-size: 13px; font-weight: 700; color: #1e2532; white-space: nowrap; }
+.stat-row-stacked .stacked-label .stacked-icon { margin-right: 4px; font-size: 13px; }
+.stat-row-stacked .stacked-value { font-size: 13px; font-weight: 700; color: #334155; white-space: nowrap; }
+.stat-row-stacked .stacked-value .stacked-pct { font-weight: 600; color: #94a3b8; margin-left: 2px; }
+.stat-row-stacked .stacked-bar-wrap {
+  width: 100%; background: #f1f4f9; border-radius: 99px; height: 7px; overflow: hidden;
+}
+.stat-row-stacked .stacked-bar {
+  height: 7px; border-radius: 99px; min-width: 6px;
+  transition: width 0.75s cubic-bezier(0.4,0,0.2,1); position: relative;
+}
+.stat-row-stacked .stacked-bar::after {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 60%);
+  border-radius: 99px;
+}
 
 /* ── 버튼 공통 ── */
 .btn-navy { background: linear-gradient(135deg, #0f2540, #1a3a5c); color: white; }
@@ -530,18 +554,16 @@ tbody tr:last-child td { border-bottom: none; }
             <span>자산 구성 현황</span>
           </div>
         </div>
-        <div style="display:flex;flex:1;min-height:0;align-items:stretch">
+        <div style="display:flex;flex:1;min-height:0;align-items:flex-start;gap:40px">
           <!-- 왼쪽: 제조사별 -->
-          <div style="flex:1;min-width:0;padding-right:20px;overflow:hidden;display:flex;flex-direction:column">
-            <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">제조사별</div>
-            <div id="d-by-maker" style="flex:1"></div>
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">제조사별</div>
+            <div id="d-by-maker"></div>
           </div>
-          <!-- 구분선 -->
-          <div style="width:1px;background:#e8ecf1;flex-shrink:0"></div>
-          <!-- 오른쪽: 기기종류 -->
-          <div style="flex:1;min-width:0;padding-left:20px;overflow:hidden;display:flex;flex-direction:column">
-            <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">기기종류별</div>
-            <div id="d-by-type" style="flex:1;display:flex;flex-direction:column;justify-content:space-between"></div>
+          <!-- 오른쪽: 기기종류별 -->
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+            <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">기기종류별</div>
+            <div id="d-by-type"></div>
           </div>
         </div>
       </div>
@@ -871,8 +893,8 @@ async function loadDashboard() {
 
   renderStatList('d-by-site',   data.by_site,   '사업장', data.total, 'site');
   renderStatList('d-by-status', data.by_status, '상태',   data.total, 'status');
-  renderStatList('d-by-maker',  data.by_maker,  '제조사', data.total, 'maker');
-  renderDeviceCards('d-by-type', data.by_type, data.total);
+  renderStackedList('d-by-maker', data.by_maker, '제조사', data.total, 'maker');
+  renderStackedList('d-by-type',  data.by_type,  '기기종류', data.total, 'type');
 }
 
 function renderStatList(elId, rows, key, total, colorType) {
@@ -898,35 +920,28 @@ function renderStatList(elId, rows, key, total, colorType) {
   }));
 }
 
-const DEVICE_META = {
-  '노트북':  { icon: '💻', bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
-  'Mac':     { icon: '🍎', bg: '#f8fafc', border: '#cbd5e1', color: '#475569' },
-  '데스크톱': { icon: '🖥️', bg: '#f0fdfa', border: '#99f6e4', color: '#0f766e' },
-  '기타':    { icon: '📦', bg: '#fafafa', border: '#e5e7eb', color: '#6b7280' },
-};
+const DEVICE_ICONS = { '노트북': '💻', 'Mac': '🍎', '데스크톱': '🖥️', '데스크탑': '🖥️', '기타': '📦' };
 
-function renderDeviceCards(elId, rows, total) {
+function renderStackedList(elId, rows, key, total, colorType) {
   const el = document.getElementById(elId);
   if (!rows || !rows.length) { el.innerHTML = '<div style="color:#aaa;font-size:13px">데이터 없음</div>'; return; }
-  const gap = rows.length > 1 ? `gap:${Math.min(10, Math.floor(40 / rows.length))}px` : '';
-  el.style.cssText = `flex:1;display:flex;flex-direction:column;justify-content:center;${gap}`;
-  el.innerHTML = rows.map(r => {
-    const key = r['기기종류'] || '기타';
-    const meta = DEVICE_META[key] || DEVICE_META['기타'];
+  el.innerHTML = rows.map((r, i) => {
     const pct = total > 0 ? Math.round(r['수량'] / total * 100) : 0;
-    return `<div style="
-      display:flex;align-items:center;gap:10px;
-      background:${meta.bg};border:1.5px solid ${meta.border};
-      border-radius:10px;padding:12px 14px;
-    ">
-      <span style="font-size:20px;line-height:1">${meta.icon}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:700;color:${meta.color}">${key}</div>
-        <div style="font-size:11px;color:#94a3b8;margin-top:1px">${pct}%</div>
+    let barClass = '';
+    if (colorType === 'maker') barClass = `bar-site-${i}`;
+    if (colorType === 'type')  barClass = `bar-type-${r[key] || ''}`;
+    const icon = colorType === 'type' ? `<span class="stacked-icon">${DEVICE_ICONS[r[key]] || DEVICE_ICONS['기타']}</span>` : '';
+    return `<div class="stat-row-stacked">
+      <div class="stacked-top">
+        <span class="stacked-label">${icon}${r[key] || '미지정'}</span>
+        <span class="stacked-value">${r['수량'].toLocaleString()}<span style="font-size:11px;color:#b0b8c8;margin-left:1px">대</span> <span class="stacked-pct">(${pct}%)</span></span>
       </div>
-      <div style="font-size:20px;font-weight:800;color:${meta.color};letter-spacing:-0.5px">${r['수량'].toLocaleString()}<span style="font-size:11px;font-weight:500;margin-left:2px;color:#94a3b8">대</span></div>
+      <div class="stacked-bar-wrap"><div class="stacked-bar ${barClass}" style="width:0%" data-w="${pct}%"></div></div>
     </div>`;
   }).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.querySelectorAll('.stacked-bar[data-w]').forEach(b => { b.style.width = b.dataset.w; });
+  }));
 }
 
 function renderDonut(elId, rows, key) {

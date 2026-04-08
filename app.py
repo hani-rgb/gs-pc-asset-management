@@ -1,7 +1,8 @@
 import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 from flask import Flask, jsonify, request, render_template, session
-import sqlite3
+import psycopg
+from psycopg.rows import dict_row
 from datetime import datetime, date
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -23,14 +24,27 @@ _secret = os.environ.get('SECRET_KEY', '')
 if not _secret:
     raise RuntimeError('.env 파일에 SECRET_KEY가 설정되지 않았습니다.')
 app.secret_key = _secret
-DB_PATH = os.path.join(os.path.dirname(__file__), 'assets.db')
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+if not DATABASE_URL:
+    raise RuntimeError('.env 파일에 DATABASE_URL이 설정되지 않았습니다.')
 
 
 # ─── DB 연결 ────────────────────────────────────────────
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    conn = psycopg.connect(DATABASE_URL, autocommit=False, row_factory=dict_row)
     return conn
+
+
+def fetchone(conn, query, params=()):
+    return conn.execute(query, params).fetchone()
+
+
+def fetchall(conn, query, params=()):
+    return conn.execute(query, params).fetchall()
+
+
+def execute(conn, query, params=()):
+    conn.execute(query, params)
 
 
 def hash_pw(pw: str) -> str:
@@ -39,9 +53,9 @@ def hash_pw(pw: str) -> str:
 
 def init_db():
     conn = get_db()
-    conn.execute('''
+    execute(conn, '''
         CREATE TABLE IF NOT EXISTS assets (
-            id            INTEGER PRIMARY KEY AUTOINCREMENT,
+            id            SERIAL PRIMARY KEY,
             자산번호      TEXT,
             지급일        TEXT,
             반납일        TEXT,
@@ -62,22 +76,18 @@ def init_db():
             수정일        TEXT
         )
     ''')
-    conn.execute('''
+    execute(conn, '''
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY, value TEXT
         )
     ''')
-    conn.execute("INSERT OR IGNORE INTO settings (key, value) VALUES ('replace_years', '5')")
+    execute(conn, "INSERT INTO settings (key, value) VALUES ('replace_years', '5') ON CONFLICT (key) DO NOTHING")
 
     # ── 사용자 테이블 ──────────────────────────────────
     # TODO: 사내 SSO 연동 필요
-    # 현재는 로컬 DB 계정만 지원합니다.
-    # 추후 이 테이블 대신 회사 AD/SSO(SAML, OAuth2, LDAP 등)와
-    # 연동하여 사번/패스워드 인증을 위임하세요.
-    # 참고 라이브러리: python-saml, flask-oidc, ldap3
-    conn.execute('''
+    execute(conn, '''
         CREATE TABLE IF NOT EXISTS users (
-            id       INTEGER PRIMARY KEY AUTOINCREMENT,
+            id       SERIAL PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             role     TEXT NOT NULL DEFAULT 'user',
@@ -85,10 +95,10 @@ def init_db():
         )
     ''')
     # 기본 계정 — 최초 실행 시 1회만 생성 (이미 있으면 건너뜀)
-    conn.execute("INSERT OR IGNORE INTO users (username, password, role, name) VALUES (?, ?, ?, ?)",
-                 ('admin', hash_pw('admin1234'), 'admin', '시스템 관리자'))
-    conn.execute("INSERT OR IGNORE INTO users (username, password, role, name) VALUES (?, ?, ?, ?)",
-                 ('user', hash_pw('user1234'), 'user', '일반 사용자'))
+    execute(conn, "INSERT INTO users (username, password, role, name) VALUES (%s, %s, %s, %s) ON CONFLICT (username) DO NOTHING",
+            ('admin', hash_pw('admin1234'), 'admin', '시스템 관리자'))
+    execute(conn, "INSERT INTO users (username, password, role, name) VALUES (%s, %s, %s, %s) ON CONFLICT (username) DO NOTHING",
+            ('user', hash_pw('user1234'), 'user', '일반 사용자'))
 
     conn.commit()
     conn.close()
@@ -133,10 +143,7 @@ def login():
         return jsonify({'success': False, 'message': '아이디와 비밀번호를 입력하세요.'}), 400
 
     conn = get_db()
-    row = conn.execute(
-        'SELECT * FROM users WHERE username = ?',
-        (username,)
-    ).fetchone()
+    row = fetchone(conn, 'SELECT * FROM users WHERE username = %s', (username,))
     conn.close()
 
     if not row or not check_password_hash(row['password'], password):
@@ -166,7 +173,7 @@ def me():
 @login_required
 def get_settings():
     conn = get_db()
-    rows = conn.execute('SELECT key, value FROM settings').fetchall()
+    rows = fetchall(conn, 'SELECT key, value FROM settings')
     conn.close()
     return jsonify({r['key']: r['value'] for r in rows})
 
@@ -177,7 +184,7 @@ def update_settings():
     data = request.json
     conn = get_db()
     for key, value in data.items():
-        conn.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (key, value))
+        execute(conn, 'INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', (key, value))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -200,32 +207,32 @@ def get_assets():
     dept      = request.args.get('부서명', '')
 
     if search:
-        query += ' AND (사용자명 LIKE ? OR 부서명 LIKE ? OR 모델명 LIKE ? OR 시리얼번호 LIKE ? OR 사번 LIKE ? OR 이메일 LIKE ? OR 자산번호 LIKE ?)'
+        query += ' AND (사용자명 ILIKE %s OR 부서명 ILIKE %s OR 모델명 ILIKE %s OR 시리얼번호 ILIKE %s OR 사번 ILIKE %s OR 이메일 ILIKE %s OR 자산번호 ILIKE %s)'
         params.extend([f'%{search}%'] * 7)
     if site:
-        query += ' AND 사업장 = ?'
+        query += ' AND 사업장 = %s'
         params.append(site)
     if status:
-        query += ' AND 상태 = ?'
+        query += ' AND 상태 = %s'
         params.append(status)
     if maker:
-        query += ' AND 제조사 = ?'
+        query += ' AND 제조사 = %s'
         params.append(maker)
     if device:
-        query += ' AND 기기종류 = ?'
+        query += ' AND 기기종류 = %s'
         params.append(device)
     if dept:
-        query += ' AND 부서명 = ?'
+        query += ' AND 부서명 = %s'
         params.append(dept)
     if old_years:
         cutoff = date(date.today().year - int(old_years), date.today().month, date.today().day).isoformat()
-        query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= ?"
+        query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s"
         params.append(cutoff)
 
     query += ' ORDER BY id DESC'
-    rows = conn.execute(query, params).fetchall()
+    rows = fetchall(conn, query, params)
     conn.close()
-    return jsonify([dict(r) for r in rows])
+    return jsonify(rows)
 
 
 @app.route('/api/assets', methods=['POST'])
@@ -234,11 +241,11 @@ def create_asset():
     data = request.json
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     conn = get_db()
-    conn.execute('''
+    execute(conn, '''
         INSERT INTO assets
             (자산번호, 지급일, 반납일, 부서명, 사번, 이메일, 사용자명, 상태, 기기종류,
              제조사, 모델명, 시리얼번호, 사업장, 도입일, 비고, 출처시트, 생성일, 수정일)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     ''', (
         data.get('자산번호'), data.get('지급일'), data.get('반납일'),
         data.get('부서명'), data.get('사번'), data.get('이메일'), data.get('사용자명'),
@@ -255,9 +262,9 @@ def create_asset():
 @login_required
 def get_asset(asset_id):
     conn = get_db()
-    row = conn.execute('SELECT * FROM assets WHERE id = ?', (asset_id,)).fetchone()
+    row = fetchone(conn, 'SELECT * FROM assets WHERE id = %s', (asset_id,))
     conn.close()
-    return jsonify(dict(row)) if row else (jsonify({'error': '없음'}), 404)
+    return jsonify(row) if row else (jsonify({'error': '없음'}), 404)
 
 
 @app.route('/api/assets/<int:asset_id>', methods=['PUT'])
@@ -266,11 +273,11 @@ def update_asset(asset_id):
     data = request.json
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     conn = get_db()
-    conn.execute('''
+    execute(conn, '''
         UPDATE assets SET
-            자산번호=?, 지급일=?, 반납일=?, 부서명=?, 사번=?, 이메일=?, 사용자명=?,
-            상태=?, 기기종류=?, 제조사=?, 모델명=?, 시리얼번호=?, 사업장=?, 도입일=?, 비고=?, 수정일=?
-        WHERE id = ?
+            자산번호=%s, 지급일=%s, 반납일=%s, 부서명=%s, 사번=%s, 이메일=%s, 사용자명=%s,
+            상태=%s, 기기종류=%s, 제조사=%s, 모델명=%s, 시리얼번호=%s, 사업장=%s, 도입일=%s, 비고=%s, 수정일=%s
+        WHERE id = %s
     ''', (
         data.get('자산번호'), data.get('지급일'), data.get('반납일'),
         data.get('부서명'), data.get('사번'), data.get('이메일'), data.get('사용자명'),
@@ -303,10 +310,8 @@ def bulk_import():
 
     conn = get_db()
     try:
-        existing = {
-            r[0]: r[1] for r in
-            conn.execute('SELECT 시리얼번호, id FROM assets WHERE 시리얼번호 IS NOT NULL').fetchall()
-        }
+        existing_rows = fetchall(conn, 'SELECT 시리얼번호, id FROM assets WHERE 시리얼번호 IS NOT NULL')
+        existing = {r['시리얼번호']: r['id'] for r in existing_rows}
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         inserted, skipped, updated = 0, 0, 0
 
@@ -316,12 +321,12 @@ def bulk_import():
                 continue
             if sn in existing:
                 if overwrite:
-                    conn.execute('''
+                    execute(conn, '''
                         UPDATE assets SET
-                            자산번호=?, 지급일=?, 반납일=?, 부서명=?, 사번=?, 이메일=?,
-                            사용자명=?, 상태=?, 기기종류=?, 제조사=?, 모델명=?,
-                            사업장=?, 도입일=?, 비고=?, 출처시트=?, 수정일=?
-                        WHERE 시리얼번호=?
+                            자산번호=%s, 지급일=%s, 반납일=%s, 부서명=%s, 사번=%s, 이메일=%s,
+                            사용자명=%s, 상태=%s, 기기종류=%s, 제조사=%s, 모델명=%s,
+                            사업장=%s, 도입일=%s, 비고=%s, 출처시트=%s, 수정일=%s
+                        WHERE 시리얼번호=%s
                     ''', (
                         asset.get('자산번호'), asset.get('지급일'), asset.get('반납일'),
                         asset.get('부서명'), asset.get('사번'), asset.get('이메일'),
@@ -335,11 +340,11 @@ def bulk_import():
                     skipped += 1
                 continue
 
-            conn.execute('''
+            execute(conn, '''
                 INSERT INTO assets
                     (자산번호, 지급일, 반납일, 부서명, 사번, 이메일, 사용자명, 상태, 기기종류,
                      제조사, 모델명, 시리얼번호, 사업장, 도입일, 비고, 출처시트, 생성일, 수정일)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
             ''', (
                 asset.get('자산번호'), asset.get('지급일'), asset.get('반납일'),
                 asset.get('부서명'), asset.get('사번'), asset.get('이메일'), asset.get('사용자명'),
@@ -364,7 +369,7 @@ def bulk_import():
 @admin_required
 def delete_asset(asset_id):
     conn = get_db()
-    conn.execute('DELETE FROM assets WHERE id = ?', (asset_id,))
+    execute(conn, 'DELETE FROM assets WHERE id = %s', (asset_id,))
     conn.commit()
     conn.close()
     return jsonify({'success': True})
@@ -375,11 +380,9 @@ def delete_asset(asset_id):
 @login_required
 def filter_departments():
     conn = get_db()
-    rows = conn.execute(
-        "SELECT DISTINCT 부서명 FROM assets WHERE 부서명 IS NOT NULL AND 부서명 != '' ORDER BY 부서명"
-    ).fetchall()
+    rows = fetchall(conn, "SELECT DISTINCT 부서명 FROM assets WHERE 부서명 IS NOT NULL AND 부서명 != '' ORDER BY 부서명")
     conn.close()
-    return jsonify([r[0] for r in rows])
+    return jsonify([r['부서명'] for r in rows])
 
 
 # ─── 대시보드 ─────────────────────────────────────────────
@@ -387,28 +390,26 @@ def filter_departments():
 @login_required
 def dashboard():
     conn = get_db()
-    replace_years = int(conn.execute(
-        "SELECT value FROM settings WHERE key='replace_years'"
-    ).fetchone()['value'])
+    replace_years = int(fetchone(conn, "SELECT value FROM settings WHERE key='replace_years'")['value'])
     cutoff = date(date.today().year - replace_years, date.today().month, date.today().day).isoformat()
 
-    total     = conn.execute('SELECT COUNT(*) FROM assets').fetchone()[0]
-    by_site   = conn.execute('SELECT 사업장, COUNT(*) as 수량 FROM assets GROUP BY 사업장 ORDER BY 수량 DESC').fetchall()
-    by_status = conn.execute('SELECT 상태, COUNT(*) as 수량 FROM assets GROUP BY 상태 ORDER BY 수량 DESC').fetchall()
-    by_maker  = conn.execute('SELECT COALESCE(NULLIF(제조사,\'\'), \'기타\') as 제조사, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC').fetchall()
-    by_type   = conn.execute('SELECT COALESCE(NULLIF(기기종류,\'\'), \'기타\') as 기기종류, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC').fetchall()
-    old_count = conn.execute(
-        "SELECT COUNT(*) FROM assets WHERE 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= ?",
+    total     = fetchone(conn, 'SELECT COUNT(*) as cnt FROM assets')['cnt']
+    by_site   = fetchall(conn, 'SELECT 사업장, COUNT(*) as 수량 FROM assets GROUP BY 사업장 ORDER BY 수량 DESC')
+    by_status = fetchall(conn, 'SELECT 상태, COUNT(*) as 수량 FROM assets GROUP BY 상태 ORDER BY 수량 DESC')
+    by_maker  = fetchall(conn, "SELECT COALESCE(NULLIF(제조사,''), '기타') as 제조사, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
+    by_type   = fetchall(conn, "SELECT COALESCE(NULLIF(기기종류,''), '기타') as 기기종류, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
+    old_count = fetchone(conn,
+        "SELECT COUNT(*) as cnt FROM assets WHERE 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s",
         (cutoff,)
-    ).fetchone()[0]
+    )['cnt']
     conn.close()
 
     return jsonify({
         'total': total,
-        'by_site': [dict(r) for r in by_site],
-        'by_status': [dict(r) for r in by_status],
-        'by_maker': [dict(r) for r in by_maker],
-        'by_type':  [dict(r) for r in by_type],
+        'by_site': by_site,
+        'by_status': by_status,
+        'by_maker': by_maker,
+        'by_type':  by_type,
         'old_count': old_count,
         'replace_years': replace_years,
     })
