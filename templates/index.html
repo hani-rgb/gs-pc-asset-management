@@ -290,6 +290,20 @@ tbody tr:last-child td { border-bottom: none; }
 .confirm-text { font-size: 14px; color: #555; margin-bottom: 24px; line-height: 1.6; white-space: pre-wrap; }
 .confirm-btns { display: flex; gap: 10px; justify-content: center; }
 
+/* 필터 태그 */
+.filter-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #e8f0fe; color: #1a3a5c;
+  border: 1px solid #bdd0f5; border-radius: 20px;
+  padding: 3px 10px 3px 12px; font-size: 12px; font-weight: 600;
+}
+.filter-tag-x {
+  cursor: pointer; font-size: 14px; color: #4b6fa8;
+  line-height: 1; background: none; border: none; padding: 0;
+  font-family: inherit;
+}
+.filter-tag-x:hover { color: #dc2626; }
+
 .empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
 .empty-state-icon { font-size: 48px; margin-bottom: 12px; }
 .loading { text-align: center; padding: 40px; color: #aaa; font-size: 14px; }
@@ -499,10 +513,28 @@ tbody tr:last-child td { border-bottom: none; }
         <option value="반납">반납</option>
         <option value="폐기">폐기</option>
       </select>
+      <select class="filter" id="filter-maker" onchange="loadAssets()">
+        <option value="">전체 제조사</option>
+        <option value="SAMSUNG">SAMSUNG</option>
+        <option value="LG">LG</option>
+        <option value="Apple">Apple</option>
+        <option value="Lenovo">Lenovo</option>
+        <option value="기타">기타</option>
+      </select>
+      <select class="filter" id="filter-device" onchange="loadAssets()">
+        <option value="">전체 기기종류</option>
+        <option value="노트북">노트북</option>
+        <option value="데스크톱">데스크톱</option>
+        <option value="Mac">Mac</option>
+      </select>
+      <select class="filter" id="filter-dept" onchange="loadAssets()">
+        <option value="">전체 부서</option>
+      </select>
       <select class="filter" id="filter-old" onchange="loadAssets()">
-        <option value="">전체 (연수 무관)</option>
+        <option value="">연수 무관</option>
         <option value="old">교체 검토 대상만</option>
       </select>
+      <button class="btn btn-secondary" onclick="resetFilters()">초기화</button>
       <button class="btn btn-primary admin-only" onclick="openRegisterModal()">+ 자산 등록</button>
       <label class="admin-only" style="display:flex;align-items:center;gap:6px;font-size:13px;color:#4b5563;cursor:pointer;white-space:nowrap;user-select:none">
         <input type="checkbox" id="excel-overwrite" style="width:14px;height:14px;cursor:pointer">
@@ -511,6 +543,7 @@ tbody tr:last-child td { border-bottom: none; }
       <button class="btn btn-success admin-only" onclick="document.getElementById('excel-file-input').click()">📥 엑셀 업로드</button>
       <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcelUpload(this)">
     </div>
+    <div id="filter-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>
     <div class="result-info" id="result-info"></div>
     <div class="table-wrap">
       <table>
@@ -631,6 +664,7 @@ function showApp(name, role) {
   navUser.style.display = '';
   logoutBtn.style.display = '';
   applyRoleUI();
+  loadDeptFilter();
   loadDashboard();
 }
 
@@ -831,11 +865,17 @@ async function loadAssets() {
   const s      = document.getElementById('search-input').value;
   const site   = document.getElementById('filter-site').value;
   const status = document.getElementById('filter-status').value;
+  const maker  = document.getElementById('filter-maker').value;
+  const device = document.getElementById('filter-device').value;
+  const dept   = document.getElementById('filter-dept').value;
   const old    = document.getElementById('filter-old').value;
 
   if (s)      params.set('search', s);
   if (site)   params.set('사업장', site);
   if (status) params.set('상태', status);
+  if (maker)  params.set('제조사', maker);
+  if (device) params.set('기기종류', device);
+  if (dept)   params.set('부서명', dept);
   if (old === 'old') params.set('old_years', replaceYears);
 
   document.getElementById('asset-tbody').innerHTML =
@@ -845,6 +885,56 @@ async function loadAssets() {
     currentAssets = await authFetch('/api/assets?' + params).then(r => r.json());
   } catch { return; }
   renderTable();
+  renderFilterTags();
+}
+
+function resetFilters() {
+  document.getElementById('search-input').value = '';
+  ['filter-site','filter-status','filter-maker','filter-device','filter-dept','filter-old']
+    .forEach(id => { document.getElementById(id).value = ''; });
+  loadAssets();
+}
+
+// 활성 필터 태그 렌더링
+function renderFilterTags() {
+  const TAG_DEFS = [
+    { id: 'search-input',  label: v => `"${v}"`,         isSearch: true },
+    { id: 'filter-site',   label: v => v },
+    { id: 'filter-status', label: v => v },
+    { id: 'filter-maker',  label: v => v },
+    { id: 'filter-device', label: v => v },
+    { id: 'filter-dept',   label: v => v },
+    { id: 'filter-old',    label: () => '교체 검토 대상' },
+  ];
+  const container = document.getElementById('filter-tags');
+  container.innerHTML = '';
+  TAG_DEFS.forEach(def => {
+    const el = document.getElementById(def.id);
+    const v = el ? el.value.trim() : '';
+    if (!v) return;
+    const tag = document.createElement('span');
+    tag.className = 'filter-tag';
+    tag.innerHTML = `${def.label(v)} <button class="filter-tag-x" title="필터 해제">×</button>`;
+    tag.querySelector('.filter-tag-x').addEventListener('click', () => {
+      if (def.isSearch) el.value = '';
+      else el.value = '';
+      loadAssets();
+    });
+    container.appendChild(tag);
+  });
+}
+
+// 부서 드롭다운 자동 로드
+async function loadDeptFilter() {
+  try {
+    const depts = await authFetch('/api/filters/departments').then(r => r.json());
+    const sel = document.getElementById('filter-dept');
+    depts.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d; opt.textContent = d;
+      sel.appendChild(opt);
+    });
+  } catch { /* 로그인 전에 호출될 경우 무시 */ }
 }
 
 // 실제 정렬 키: '연수' 컬럼은 도입일의 경과 년수(숫자)로 별도 처리

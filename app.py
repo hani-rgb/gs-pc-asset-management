@@ -195,6 +195,9 @@ def get_assets():
     site      = request.args.get('사업장', '')
     status    = request.args.get('상태', '')
     old_years = request.args.get('old_years', '')
+    maker     = request.args.get('제조사', '')
+    device    = request.args.get('기기종류', '')
+    dept      = request.args.get('부서명', '')
 
     if search:
         query += ' AND (사용자명 LIKE ? OR 부서명 LIKE ? OR 모델명 LIKE ? OR 시리얼번호 LIKE ? OR 사번 LIKE ? OR 이메일 LIKE ? OR 자산번호 LIKE ?)'
@@ -205,6 +208,15 @@ def get_assets():
     if status:
         query += ' AND 상태 = ?'
         params.append(status)
+    if maker:
+        query += ' AND 제조사 = ?'
+        params.append(maker)
+    if device:
+        query += ' AND 기기종류 = ?'
+        params.append(device)
+    if dept:
+        query += ' AND 부서명 = ?'
+        params.append(dept)
     if old_years:
         cutoff = date(date.today().year - int(old_years), date.today().month, date.today().day).isoformat()
         query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= ?"
@@ -356,6 +368,18 @@ def delete_asset(asset_id):
     conn.commit()
     conn.close()
     return jsonify({'success': True})
+
+
+# ─── 필터 메타 ───────────────────────────────────────────
+@app.route('/api/filters/departments')
+@login_required
+def filter_departments():
+    conn = get_db()
+    rows = conn.execute(
+        "SELECT DISTINCT 부서명 FROM assets WHERE 부서명 IS NOT NULL AND 부서명 != '' ORDER BY 부서명"
+    ).fetchall()
+    conn.close()
+    return jsonify([r[0] for r in rows])
 
 
 # ─── 대시보드 ─────────────────────────────────────────────
