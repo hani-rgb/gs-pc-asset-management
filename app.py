@@ -224,10 +224,36 @@ def get_assets():
     if dept:
         query += ' AND 부서명 = %s'
         params.append(dept)
+    age_range = request.args.get('age_range', '')
     if old_years:
         cutoff = date(date.today().year - int(old_years), date.today().month, date.today().day).isoformat()
         query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s"
         params.append(cutoff)
+    elif age_range:
+        today = date.today()
+        if age_range == 'lt1':
+            y1 = date(today.year - 1, today.month, today.day).isoformat()
+            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s"
+            params.append(y1)
+        elif age_range == '1to2':
+            y1 = date(today.year - 1, today.month, today.day).isoformat()
+            y2 = date(today.year - 2, today.month, today.day).isoformat()
+            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
+            params.extend([y2, y1])
+        elif age_range == '2to3':
+            y2 = date(today.year - 2, today.month, today.day).isoformat()
+            y3 = date(today.year - 3, today.month, today.day).isoformat()
+            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
+            params.extend([y3, y2])
+        elif age_range == '3to5':
+            y3 = date(today.year - 3, today.month, today.day).isoformat()
+            y5 = date(today.year - 5, today.month, today.day).isoformat()
+            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
+            params.extend([y5, y3])
+        elif age_range == 'gt5':
+            y5 = date(today.year - 5, today.month, today.day).isoformat()
+            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s"
+            params.append(y5)
 
     query += ' ORDER BY id DESC'
     rows = fetchall(conn, query, params)
@@ -385,6 +411,22 @@ def filter_departments():
     return jsonify([r['부서명'] for r in rows])
 
 
+@app.route('/api/filters/models')
+@login_required
+def filter_models():
+    maker = request.args.get('제조사', '')
+    conn = get_db()
+    if maker:
+        rows = fetchall(conn,
+            "SELECT DISTINCT 모델명 FROM assets WHERE 제조사 = %s AND 모델명 IS NOT NULL AND 모델명 != '' ORDER BY 모델명",
+            (maker,))
+    else:
+        rows = fetchall(conn,
+            "SELECT DISTINCT 모델명 FROM assets WHERE 모델명 IS NOT NULL AND 모델명 != '' ORDER BY 모델명")
+    conn.close()
+    return jsonify([r['모델명'] for r in rows])
+
+
 # ─── 대시보드 ─────────────────────────────────────────────
 @app.route('/api/dashboard')
 @login_required
@@ -398,10 +440,41 @@ def dashboard():
     by_status = fetchall(conn, 'SELECT 상태, COUNT(*) as 수량 FROM assets GROUP BY 상태 ORDER BY 수량 DESC')
     by_maker  = fetchall(conn, "SELECT COALESCE(NULLIF(제조사,''), '기타') as 제조사, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
     by_type   = fetchall(conn, "SELECT COALESCE(NULLIF(기기종류,''), '기타') as 기기종류, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
-    old_count = fetchone(conn,
-        "SELECT COUNT(*) as cnt FROM assets WHERE 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s",
-        (cutoff,)
-    )['cnt']
+    # 사용 연한별 분포 — replace_years 기준으로 동적 구간 생성
+    today = date.today()
+    ry = replace_years
+    y1 = date(today.year - 1, today.month, today.day).isoformat()
+    y2 = date(today.year - 2, today.month, today.day).isoformat()
+    y3 = date(today.year - 3, today.month, today.day).isoformat()
+    yr = date(today.year - ry, today.month, today.day).isoformat()
+
+    # 3년~N년 구간과 N년 이상 구간을 replace_years 기준으로 분리
+    by_age = fetchall(conn, """
+        SELECT
+          CASE
+            WHEN 도입일 IS NULL OR 도입일 = '' THEN '도입일 없음'
+            WHEN 도입일 > %s THEN '1년 미만'
+            WHEN 도입일 > %s THEN '1년~2년'
+            WHEN 도입일 > %s THEN '2년~3년'
+            WHEN 도입일 > %s THEN %s
+            ELSE %s
+          END as 구간,
+          COUNT(*) as 수량
+        FROM assets
+        GROUP BY 1
+    """, (y1, y2, y3, yr,
+          f'3년~{ry}년',
+          f'{ry}년 이상'))
+    # 순서 보장
+    label_mid = f'3년~{ry}년'
+    label_old = f'{ry}년 이상'
+    age_order = ['1년 미만', '1년~2년', '2년~3년', label_mid, label_old, '도입일 없음']
+    age_map = {r['구간']: r['수량'] for r in by_age}
+    by_age_sorted = [{'구간': k, '수량': age_map.get(k, 0)} for k in age_order if age_map.get(k, 0) > 0]
+
+    # old_count = "N년 이상" 구간 수량 (동일 데이터 소스)
+    old_count = age_map.get(label_old, 0)
+
     conn.close()
 
     return jsonify({
@@ -410,6 +483,7 @@ def dashboard():
         'by_status': by_status,
         'by_maker': by_maker,
         'by_type':  by_type,
+        'by_age': by_age_sorted,
         'old_count': old_count,
         'replace_years': replace_years,
     })

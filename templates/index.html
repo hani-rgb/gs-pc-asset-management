@@ -6,12 +6,13 @@
 <title>GS에너지 PC 자산관리</title>
 <script src="/static/xlsx.full.min.js"></script>
 <style>
-/* Google Fonts 로컬 대체 — 시스템 폰트 폴백 사용 */
+/* Apple-style 폰트: Pretendard → SF Pro → 시스템 */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Inter', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f0f2f5; color: #1e2532;
+  font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Malgun Gothic', sans-serif;
+  background: #F2F2F7; color: #1c1c1e;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -47,11 +48,11 @@ body {
 /* ── 상단 요약 카드 4개 ── */
 .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 28px; }
 .card {
-  background: #fff; border-radius: 18px; padding: 26px 28px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.06);
-  position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s;
+  background: #fff; border-radius: 16px; padding: 26px 28px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  position: relative; overflow: hidden; transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
-.card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.12); transform: translateY(-3px); }
+.card:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); transform: translateY(-2px); cursor: pointer; }
 .card::before {
   content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
   background: linear-gradient(90deg, #1a3a5c, #3b82f6);
@@ -81,27 +82,22 @@ body {
 /* ── 대시보드 패널 그리드 ── */
 .dash-panels {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 20px;
   margin-bottom: 20px;
 }
-.dash-panels-bottom {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
 .panel {
-  background: #fff; border-radius: 18px; padding: 28px 28px 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.06);
-  transition: box-shadow 0.2s, transform 0.2s;
+  background: #fff; border-radius: 16px; padding: 28px 28px 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
-.panel:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.10); transform: translateY(-3px); }
+.panel:hover { box-shadow: 0 8px 30px rgba(0,0,0,0.08); transform: translateY(-2px); }
 /* 3열 패널 높이 통일 */
 .dash-panels { align-items: stretch; }
 .dash-panels > .panel { min-height: 240px; }
 .panel-title {
-  font-size: 13px; font-weight: 700; color: #8b95a8;
-  text-transform: uppercase; letter-spacing: 0.6px;
+  font-size: 13px; font-weight: 600; color: #8E8E93;
+  letter-spacing: -0.1px;
   margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
   justify-content: space-between;
 }
@@ -111,10 +107,10 @@ body {
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; flex-shrink: 0;
 }
-.panel-icon.blue   { background: #eff6ff; }
-.panel-icon.green  { background: #f0fdf4; }
-.panel-icon.purple { background: #faf5ff; }
-.panel-icon.orange { background: #fff7ed; }
+.panel-icon.blue   { background: rgba(0,122,255,0.1); }
+.panel-icon.green  { background: rgba(52,199,89,0.1); }
+.panel-icon.purple { background: rgba(175,82,222,0.1); }
+.panel-icon.orange { background: rgba(255,149,0,0.1); }
 
 /* ── 통계 바 ── */
 .stat-row {
@@ -178,6 +174,28 @@ body {
   content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   background: linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 60%);
   border-radius: 99px;
+}
+
+/* ── 도넛 범례 (Apple style) ── */
+.donut-legend-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 6px;
+}
+.donut-legend-item:hover { background: #F2F2F7; }
+.donut-legend-label {
+  font-size: 13px; color: #3a3a3c; font-weight: 400; flex: 1;
+  letter-spacing: -0.2px;
+}
+.donut-legend-value {
+  font-size: 15px; font-weight: 600; color: #1c1c1e;
+  letter-spacing: -0.3px; font-variant-numeric: tabular-nums;
+}
+.donut-legend-pct {
+  font-size: 12px; color: #A1A1A6; font-weight: 400;
+  min-width: 32px; text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ── 버튼 공통 ── */
@@ -498,25 +516,25 @@ tbody tr:last-child td { border-bottom: none; }
 
     <!-- KPI 카드 4개 -->
     <div class="cards">
-      <div class="card">
+      <div class="card" onclick="goAssetList()">
         <div class="card-bg-icon">💻</div>
         <div class="card-label">전체 자산</div>
         <div class="card-value" id="d-total">-</div>
         <div class="card-sub">등록된 PC 자산 총계</div>
       </div>
-      <div class="card ok">
+      <div class="card ok" onclick="goAssetList('상태','사용중')">
         <div class="card-bg-icon">👥</div>
         <div class="card-label">사용중</div>
         <div class="card-value ok" id="d-using">-</div>
         <div class="card-sub">현재 사용 중인 자산</div>
       </div>
-      <div class="card info">
+      <div class="card info" onclick="goAssetList('상태','대여중')">
         <div class="card-bg-icon">🔄</div>
         <div class="card-label">대여중</div>
         <div class="card-value" style="color:#7c3aed" id="d-loan">-</div>
         <div class="card-sub">현재 대여 중인 자산</div>
       </div>
-      <div class="card warn">
+      <div class="card warn" onclick="goAssetList('연수','old')">
         <div class="card-bg-icon">⚠️</div>
         <div class="card-label" id="d-old-sub">교체 검토 대상</div>
         <div class="card-value warn" id="d-old">-</div>
@@ -524,19 +542,16 @@ tbody tr:last-child td { border-bottom: none; }
       </div>
     </div>
 
-    <!-- 3열 현황 패널 -->
+    <!-- 2×2 현황 패널 -->
     <div class="dash-panels">
       <div class="panel">
         <div class="panel-title">
           <div class="panel-title-left">
             <div class="panel-icon blue">🏢</div>
-            <span>사용사업장별</span>
+            <span>사업장별 구분</span>
           </div>
         </div>
         <div id="d-by-site"></div>
-        <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f1f4f9;font-size:11px;color:#b0b8c8;line-height:1.6">
-          GS에너지 보유 자산 기준 / 사용 위치별 집계
-        </div>
       </div>
       <div class="panel">
         <div class="panel-title">
@@ -547,25 +562,23 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
         <div id="d-by-status"></div>
       </div>
-      <div class="panel" style="display:flex;flex-direction:column;">
+      <div class="panel">
         <div class="panel-title">
           <div class="panel-title-left">
             <div class="panel-icon purple">📦</div>
-            <span>자산 구성 현황</span>
+            <span>제조사 · 기기 현황</span>
           </div>
         </div>
-        <div style="display:flex;flex:1;min-height:0;align-items:flex-start;gap:40px">
-          <!-- 왼쪽: 제조사별 -->
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
-            <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">제조사별</div>
-            <div id="d-by-maker"></div>
-          </div>
-          <!-- 오른쪽: 기기종류별 -->
-          <div style="flex:1;min-width:0;display:flex;flex-direction:column">
-            <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">기기종류별</div>
-            <div id="d-by-type"></div>
+        <div id="d-by-maker"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">
+          <div class="panel-title-left">
+            <div class="panel-icon orange">⏱️</div>
+            <span>사용 연한 현황</span>
           </div>
         </div>
+        <div id="d-by-age"></div>
       </div>
     </div>
 
@@ -608,8 +621,12 @@ tbody tr:last-child td { border-bottom: none; }
         <option value="">전체 부서</option>
       </select>
       <select class="filter" id="filter-old" onchange="loadAssets()">
-        <option value="">연수 무관</option>
-        <option value="old">교체 검토 대상만</option>
+        <option value="">전체 (연수 무관)</option>
+        <option value="lt1">1년 미만</option>
+        <option value="1to2">1년 ~ 2년</option>
+        <option value="2to3">2년 ~ 3년</option>
+        <option value="3to5">3년 ~ 5년</option>
+        <option value="gt5">5년 이상</option>
       </select>
       <button class="btn btn-secondary" onclick="resetFilters()">초기화</button>
       <button class="btn btn-primary admin-only" onclick="openRegisterModal()">+ 자산 등록</button>
@@ -734,7 +751,7 @@ tbody tr:last-child td { border-bottom: none; }
         <button class="btn btn-primary btn-sm" style="height:40px;padding:0 20px;font-size:14px" onclick="saveYears()">적용</button>
       </div>
       <div style="font-size:12px;color:#b0b8c8;margin-bottom:20px">※ 변경 즉시 대시보드와 목록 필터에 반영됩니다</div>
-      <button class="btn btn-navy btn-sm" style="width:100%;padding:10px" onclick="closeSettingsModal();showPage('assets');setOldFilter()">교체 검토 대상 목록 보기 →</button>
+      <button class="btn btn-navy btn-sm" style="width:100%;padding:10px" onclick="closeSettingsModal();goAssetList('연수','gt5')">교체 검토 대상 목록 보기 →</button>
     </div>
   </div>
 </div>
@@ -863,8 +880,8 @@ function showPage(name) {
   if (name === 'register') renderRegisterPage();
 }
 
-function setOldFilter() {
-  document.getElementById('filter-old').value = 'old';
+function setOldFilter(val) {
+  document.getElementById('filter-old').value = val || 'old';
   loadAssets();
 }
 
@@ -881,20 +898,177 @@ async function loadDashboard() {
 
   const unit = n => `${n.toLocaleString()}<span class="card-unit">대</span>`;
   document.getElementById('d-total').innerHTML = unit(data.total);
+  // old_count는 by_age의 "N년 이상" 구간과 동일 데이터 소스
   document.getElementById('d-old').innerHTML   = unit(data.old_count);
   document.getElementById('d-old-sub').textContent = `교체 검토 (${replaceYears}년+)`;
-  const remind = document.getElementById('d-old-remind');
-  if (remind) remind.textContent = data.old_count.toLocaleString();
 
   const using = (data.by_status.find(s => s['상태'] === '사용중') || {})['수량'] || 0;
   const loan  = (data.by_status.find(s => s['상태'] === '대여중') || {})['수량'] || 0;
   document.getElementById('d-using').innerHTML = unit(using);
   document.getElementById('d-loan').innerHTML  = unit(loan);
 
-  renderStatList('d-by-site',   data.by_site,   '사업장', data.total, 'site');
-  renderStatList('d-by-status', data.by_status, '상태',   data.total, 'status');
-  renderStackedList('d-by-maker', data.by_maker, '제조사', data.total, 'maker');
-  renderStackedList('d-by-type',  data.by_type,  '기기종류', data.total, 'type');
+  renderClickableDonut('d-by-site', data.by_site, '사업장', data.total, BASE_SITE, '사업장');
+  renderClickableDonut('d-by-status', data.by_status, '상태', data.total, BASE_STATUS, '상태');
+  renderClickableDonut('d-by-maker', data.by_maker, '제조사', data.total, BASE_MAKER, '제조사', data.by_type);
+  renderAgeDonut('d-by-age', data.by_age, data.total);
+}
+
+function goAssetList(filterType, filterValue) {
+  // Reset without reloading
+  document.getElementById('search-input').value = '';
+  ['filter-site','filter-status','filter-maker','filter-device','filter-dept','filter-old']
+    .forEach(id => { document.getElementById(id).value = ''; });
+  if (filterType === '상태') {
+    document.getElementById('filter-status').value = filterValue;
+  } else if (filterType === '연수') {
+    document.getElementById('filter-old').value = filterValue;
+  } else if (filterType === '사업장') {
+    document.getElementById('filter-site').value = filterValue;
+  } else if (filterType === '제조사') {
+    document.getElementById('filter-maker').value = filterValue;
+  } else if (filterType === '기기종류') {
+    document.getElementById('filter-device').value = filterValue;
+  }
+  showPage('assets');
+}
+
+// High-Contrast Monochrome — HSL 밝기(Lightness) 기반 계단식 컬러
+// baseHSL: [h, s, l_dark] — 가장 진한 색의 HSL 값
+// count만큼 lightness를 15~18%씩 올려 고대비 생성
+function rgb2hsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  let h, s, l = (mx + mn) / 2;
+  if (mx === mn) { h = s = 0; }
+  else {
+    const d = mx - mn;
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (mx === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+  return [Math.round(h * 360), Math.round(s * 100), Math.round(l * 100)];
+}
+function monoGradient(baseHSL, count) {
+  const [h, s, lBase] = baseHSL;
+  // 1순위: 원래 밝기, 이후 18%씩 밝기 증가, 최대 92%
+  // 채도도 순위 내려갈수록 살짝 감소 (선명함→파스텔)
+  return Array.from({length: count}, (_, i) => {
+    const l = Math.min(lBase + i * 18, 92);
+    const sat = Math.max(s - i * 8, 20);
+    return `hsl(${h}, ${sat}%, ${l}%)`;
+  });
+}
+
+// 영역별 HSL 기준색 (가장 진한 색)
+const BASE_SITE   = [215, 100, 42];  // Deep Blue  #0055D4 계열
+const BASE_STATUS = [145, 72, 38];   // Emerald    #1BA854 계열
+const BASE_MAKER  = [241, 60, 45];   // Indigo     #5240B8 계열
+const BASE_TYPE   = [241, 60, 45];   // Indigo (same family)
+const BASE_AGE    = [240, 4, 40];    // Cool Gray  #626268 계열
+const AGE_WARN    = '#FF3B30';        // Coral Red for 경고
+
+function renderClickableDonut(elId, rows, key, total, baseRGB, filterType, extraRows) {
+  const el = document.getElementById(elId);
+  if (!rows || !rows.length) { el.innerHTML = '<div style="color:#8E8E93;font-size:13px">데이터 없음</div>'; return; }
+  const sum = rows.reduce((s, r) => s + r['수량'], 0);
+  if (!sum) { el.innerHTML = '<div style="color:#8E8E93;font-size:13px">데이터 없음</div>'; return; }
+
+  const colors = monoGradient(baseRGB, rows.length);
+  const FN = "Pretendard Variable,SF Pro Display,sans-serif";
+  const R = 56, cx = 70, cy = 70, SW = 11, circ = 2 * Math.PI * R;
+  const gap = 4; // 넓은 흰색 간격으로 조각 분리
+
+  let cum = 0;
+  const segs = rows.map((r, i) => {
+    const pct = r['수량'] / sum;
+    const rawLen = pct * circ;
+    const len = Math.max(rawLen - gap, 0.5);
+    const offset = gap / 2;
+    const angle = -90 + cum * 360;
+    cum += pct;
+    return `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${colors[i]}" stroke-width="${SW}"
+      stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}"
+      stroke-dashoffset="-${offset.toFixed(2)}"
+      stroke-linecap="round"
+      transform="rotate(${angle.toFixed(1)} ${cx} ${cy})" style="cursor:pointer;transition:opacity 0.2s"
+      onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"
+      onclick="goAssetList('${filterType}','${(r[key]||'').replace(/'/g,"\\'")}')" />`;
+  }).join('');
+
+  // 범례: 순위 낮을수록 텍스트 연하게 (시각적 위계)
+  const textDim = [1.0, 0.85, 0.65, 0.5, 0.4, 0.35, 0.3, 0.3];
+  const legend = rows.map((r, i) => {
+    const pct = Math.round(r['수량'] / sum * 100);
+    const label = r[key] || '미지정';
+    const dim = textDim[Math.min(i, textDim.length - 1)];
+    const labelColor = `rgba(28,28,30,${Math.min(dim + 0.15, 1)})`;
+    const valueColor = `rgba(28,28,30,${dim})`;
+    return `<div class="donut-legend-item" onclick="goAssetList('${filterType}','${label.replace(/'/g,"\\'")}')">
+      <div style="width:8px;height:8px;border-radius:50%;background:${colors[i]};flex-shrink:0"></div>
+      <span class="donut-legend-label" style="color:${labelColor}">${label}</span>
+      <span class="donut-legend-value" style="color:${valueColor}">${r['수량'].toLocaleString()}</span>
+      <span class="donut-legend-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  // 기기종류 서브 차트 (제조사·기기 패널용)
+  let subChart = '';
+  if (extraRows && extraRows.length) {
+    const subSum = extraRows.reduce((s, r) => s + r['수량'], 0);
+    const subColors = monoGradient(BASE_TYPE, extraRows.length);
+    let subCum = 0;
+    const subSegs = extraRows.map((r, i) => {
+      const pct = r['수량'] / subSum;
+      const rawLen = pct * circ;
+      const len = Math.max(rawLen - gap, 0.5);
+      const offset = gap / 2;
+      const angle = -90 + subCum * 360;
+      subCum += pct;
+      return `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${subColors[i]}" stroke-width="${SW}"
+        stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}"
+        stroke-dashoffset="-${offset.toFixed(2)}"
+        stroke-linecap="round"
+        transform="rotate(${angle.toFixed(1)} ${cx} ${cy})" style="cursor:pointer;transition:opacity 0.2s"
+        onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"
+        onclick="goAssetList('기기종류','${(r['기기종류']||'').replace(/'/g,"\\'")}')" />`;
+    }).join('');
+    const subLegend = extraRows.map((r, i) => {
+      const pct = Math.round(r['수량'] / subSum * 100);
+      const label = r['기기종류'] || '기타';
+      const dim = textDim[Math.min(i, textDim.length - 1)];
+      const labelColor = `rgba(28,28,30,${Math.min(dim + 0.15, 1)})`;
+      const valueColor = `rgba(28,28,30,${dim})`;
+      return `<div class="donut-legend-item" onclick="goAssetList('기기종류','${label.replace(/'/g,"\\'")}')">
+        <div style="width:8px;height:8px;border-radius:50%;background:${subColors[i]};flex-shrink:0"></div>
+        <span class="donut-legend-label" style="color:${labelColor}">${label}</span>
+        <span class="donut-legend-value" style="color:${valueColor}">${r['수량'].toLocaleString()}</span>
+        <span class="donut-legend-pct">${pct}%</span>
+      </div>`;
+    }).join('');
+    subChart = `<div style="margin-top:18px;padding-top:16px;border-top:1px solid #E5E5EA">
+      <div style="font-size:11px;font-weight:600;color:#8E8E93;letter-spacing:0.3px;text-transform:uppercase;margin-bottom:12px">기기종류별</div>
+      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+        <svg viewBox="0 0 140 140" width="100" height="100" style="flex-shrink:0">
+          <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#F2F2F7" stroke-width="${SW}"/>
+          ${subSegs}
+          <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="17" font-weight="300" fill="#1c1c1e" font-family="${FN}">${subSum.toLocaleString()}</text>
+          <text x="${cx}" y="${cy + 13}" text-anchor="middle" font-size="9" font-weight="400" fill="#8E8E93" font-family="${FN}">대</text>
+        </svg>
+        <div style="flex:1;min-width:100px">${subLegend}</div>
+      </div>
+    </div>`;
+  }
+
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+    <svg viewBox="0 0 140 140" width="130" height="130" style="flex-shrink:0">
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#F2F2F7" stroke-width="${SW}"/>
+      ${segs}
+      <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="22" font-weight="300" fill="#1c1c1e" font-family="${FN}">${sum.toLocaleString()}</text>
+      <text x="${cx}" y="${cy + 15}" text-anchor="middle" font-size="10" font-weight="400" fill="#8E8E93" font-family="${FN}">대</text>
+    </svg>
+    <div style="flex:1;min-width:120px">${legend}</div>
+  </div>${subChart}`;
 }
 
 function renderStatList(elId, rows, key, total, colorType) {
@@ -942,6 +1116,82 @@ function renderStackedList(elId, rows, key, total, colorType) {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     el.querySelectorAll('.stacked-bar[data-w]').forEach(b => { b.style.width = b.dataset.w; });
   }));
+}
+
+function renderAgeDonut(elId, rows, total) {
+  const el = document.getElementById(elId);
+  if (!rows || !rows.length) { el.innerHTML = '<div style="color:#8E8E93;font-size:13px">데이터 없음</div>'; return; }
+
+  const warnLabel = `${replaceYears}년 이상`;
+  const FN = "Pretendard Variable,SF Pro Display,sans-serif";
+
+  // Cool Gray HSL 그라데이션 + 경고만 Coral Red
+  const ageColors = monoGradient(BASE_AGE, 6);
+  function ageColor(label, idx) {
+    if (label === warnLabel) return AGE_WARN;
+    if (label === '도입일 없음') return `hsl(${BASE_AGE[0]}, ${Math.max(BASE_AGE[1] - 2, 0)}%, 88%)`;
+    return ageColors[Math.min(idx, ageColors.length - 1)];
+  }
+
+  const R = 56, cx = 70, cy = 70, SW = 11, circ = 2 * Math.PI * R;
+  const gap = 4;
+  const sum = rows.reduce((s, r) => s + r['수량'], 0);
+  const textDim = [1.0, 0.85, 0.65, 0.5, 0.4, 0.35];
+
+  let grayIdx = 0;
+  let cum = 0;
+  const segs = rows.map((r, i) => {
+    const pct = r['수량'] / sum;
+    const rawLen = pct * circ;
+    const len = Math.max(rawLen - gap, 0.5);
+    const offset = gap / 2;
+    const angle = -90 + cum * 360;
+    const isWarn = r['구간'] === warnLabel;
+    const isNone = r['구간'] === '도입일 없음';
+    const color = ageColor(r['구간'], isWarn || isNone ? 0 : grayIdx);
+    if (!isWarn && !isNone) grayIdx++;
+    cum += pct;
+    return `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${color}" stroke-width="${SW}"
+      stroke-dasharray="${len.toFixed(2)} ${(circ - len).toFixed(2)}"
+      stroke-dashoffset="-${offset.toFixed(2)}"
+      stroke-linecap="round"
+      transform="rotate(${angle.toFixed(1)} ${cx} ${cy})"
+      style="cursor:pointer;transition:opacity 0.2s"
+      onmouseover="this.style.opacity='0.7'" onmouseout="this.style.opacity='1'"/>`;
+  }).join('');
+
+  const ageRangeMap = { '1년 미만': 'lt1', '1년~2년': '1to2', '2년~3년': '2to3' };
+  ageRangeMap[`3년~${replaceYears}년`] = '3to5';
+  ageRangeMap[warnLabel] = 'gt5';
+
+  let grayIdx2 = 0;
+  const legend = rows.map((r, i) => {
+    const pct = sum > 0 ? Math.round(r['수량'] / sum * 100) : 0;
+    const isWarn = r['구간'] === warnLabel;
+    const isNone = r['구간'] === '도입일 없음';
+    const color = ageColor(r['구간'], isWarn || isNone ? 0 : grayIdx2);
+    if (!isWarn && !isNone) grayIdx2++;
+    const ageKey = ageRangeMap[r['구간']] || '';
+    const dim = textDim[Math.min(i, textDim.length - 1)];
+    const labelColor = isWarn ? '#FF3B30' : `rgba(28,28,30,${Math.min(dim + 0.15, 1)})`;
+    const valueColor = isWarn ? '#FF3B30' : `rgba(28,28,30,${dim})`;
+    return `<div class="donut-legend-item" ${ageKey ? `onclick="goAssetList('연수','${ageKey}')"` : ''} style="${ageKey ? 'cursor:pointer' : ''}">
+      <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+      <span class="donut-legend-label" style="color:${labelColor};${isWarn ? 'font-weight:600' : ''}">${r['구간']}</span>
+      <span class="donut-legend-value" style="color:${valueColor}">${r['수량']}</span>
+      <span class="donut-legend-pct">${pct}%</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div style="display:flex;align-items:center;gap:28px;flex-wrap:wrap">
+    <svg viewBox="0 0 140 140" width="130" height="130" style="flex-shrink:0">
+      <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#F2F2F7" stroke-width="${SW}"/>
+      ${segs}
+      <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="22" font-weight="300" fill="#1c1c1e" font-family="${FN}">${total.toLocaleString()}</text>
+      <text x="${cx}" y="${cy + 15}" text-anchor="middle" font-size="10" font-weight="400" fill="#8E8E93" font-family="${FN}">대</text>
+    </svg>
+    <div style="flex:1;min-width:120px">${legend}</div>
+  </div>`;
 }
 
 function renderDonut(elId, rows, key) {
@@ -1052,6 +1302,7 @@ async function loadAssets() {
   if (device) params.set('기기종류', device);
   if (dept)   params.set('부서명', dept);
   if (old === 'old') params.set('old_years', replaceYears);
+  else if (old) params.set('age_range', old);
 
   document.getElementById('asset-tbody').innerHTML =
     '<tr><td colspan="13" class="loading">로딩 중...</td></tr>';
@@ -1079,7 +1330,7 @@ function renderFilterTags() {
     { id: 'filter-maker',  label: v => v },
     { id: 'filter-device', label: v => v },
     { id: 'filter-dept',   label: v => v },
-    { id: 'filter-old',    label: () => '교체 검토 대상' },
+    { id: 'filter-old',    label: v => ({lt1:'1년 미만','1to2':'1년~2년','2to3':'2년~3년','3to5':'3년~5년',gt5:'5년 이상',old:'교체 검토 대상'}[v] || v) },
   ];
   const container = document.getElementById('filter-tags');
   container.innerHTML = '';
@@ -1405,8 +1656,19 @@ function assetFormHTML(data) {
     ${fld('부서명', '부서명')}
     ${fld('기기종류', '기기종류', 'text', ['노트북','데스크톱','Mac'])}
     ${fld('자산번호', '자산번호', 'text', null, '(ERP 연동 예정)')}
-    ${fld('제조사', '제조사')}
-    ${fld('모델명', '모델명')}
+    <div class="form-group">
+      <label class="form-label">제조사</label>
+      <select class="form-control" id="f-제조사" onchange="onMakerChange()">
+        <option value="">선택</option>
+        ${['SAMSUNG','LG','Apple','Lenovo','기타'].map(m => `<option value="${m}" ${v['제조사']===m?'selected':''}>${m}</option>`).join('')}
+      </select>
+      <input type="text" class="form-control" id="f-제조사-custom" placeholder="제조사 직접 입력" style="margin-top:6px;display:${v['제조사'] && !['SAMSUNG','LG','Apple','Lenovo','기타'].includes(v['제조사']) ? '' : 'none'}" value="${(!['SAMSUNG','LG','Apple','Lenovo','기타',''].includes(v['제조사']||'')) ? (v['제조사']||'') : ''}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">모델명</label>
+      <input type="text" class="form-control" id="f-모델명" value="${v['모델명']||''}" list="model-list" autocomplete="off">
+      <datalist id="model-list"></datalist>
+    </div>
     <div class="form-group full">
       <label class="form-label">시리얼번호 (S/N) <span class="required">*</span></label>
       <input type="text" class="form-control" id="f-시리얼번호" value="${v['시리얼번호']||''}">
@@ -1418,6 +1680,31 @@ function assetFormHTML(data) {
   </div>`;
 }
 
+// ─── 제조사/모델명 연동 ──────────────────────────────
+function onMakerChange() {
+  const sel = document.getElementById('f-제조사');
+  const custom = document.getElementById('f-제조사-custom');
+  if (sel.value === '기타') {
+    custom.style.display = '';
+    custom.focus();
+  } else {
+    custom.style.display = 'none';
+    custom.value = '';
+  }
+  // 모델명 datalist 업데이트
+  loadModelList(sel.value === '기타' ? '' : sel.value);
+}
+
+async function loadModelList(maker) {
+  const datalist = document.getElementById('model-list');
+  if (!datalist) return;
+  try {
+    const params = maker ? `?제조사=${encodeURIComponent(maker)}` : '';
+    const models = await authFetch(`/api/filters/models${params}`).then(r => r.json());
+    datalist.innerHTML = models.map(m => `<option value="${m}">`).join('');
+  } catch { datalist.innerHTML = ''; }
+}
+
 // ─── 모달 열기/저장 ──────────────────────────────────
 function openRegisterModal() {
   editingId = null;
@@ -1425,6 +1712,7 @@ function openRegisterModal() {
   document.getElementById('modal-form-body').innerHTML = assetFormHTML(null);
   document.getElementById('modal-save-btn').textContent = '등록';
   openModal('asset-modal');
+  loadModelList('');
 }
 
 function openEditModal(id) {
@@ -1435,6 +1723,15 @@ function openEditModal(id) {
   document.getElementById('modal-form-body').innerHTML = assetFormHTML(asset);
   document.getElementById('modal-save-btn').textContent = '저장';
   openModal('asset-modal');
+  // 제조사가 표준 목록에 없으면 "기타"로 설정
+  const maker = asset['제조사'] || '';
+  const std = ['SAMSUNG','LG','Apple','Lenovo','기타',''];
+  if (!std.includes(maker)) {
+    document.getElementById('f-제조사').value = '기타';
+    document.getElementById('f-제조사-custom').style.display = '';
+    document.getElementById('f-제조사-custom').value = maker;
+  }
+  loadModelList(maker);
 }
 
 function editFromDetail() {
@@ -1457,6 +1754,11 @@ function getFormData() {
     const el = document.getElementById('f-' + f);
     if (el) data[f] = el.value.trim() || null;
   });
+  // 제조사 "기타" 선택 시 직접 입력 값 사용
+  if (data['제조사'] === '기타') {
+    const custom = document.getElementById('f-제조사-custom');
+    if (custom && custom.value.trim()) data['제조사'] = custom.value.trim();
+  }
   return data;
 }
 
@@ -1550,6 +1852,7 @@ function renderRegisterPage() {
       <button class="btn btn-success" onclick="saveFromPage()">등록하기</button>
     </div>
     <div id="register-result" style="margin-top:12px"></div>`;
+  loadModelList('');
 }
 
 async function saveFromPage() {
