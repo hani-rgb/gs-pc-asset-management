@@ -2,9 +2,9 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 from flask import Flask, jsonify, request, render_template, session
 import sqlite3
-import hashlib
 from datetime import datetime, date
 from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 # ── .env 파일 로드 (python-dotenv 없이 직접 파싱) ──────────
 _env_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -34,7 +34,7 @@ def get_db():
 
 
 def hash_pw(pw: str) -> str:
-    return hashlib.sha256(pw.encode('utf-8')).hexdigest()
+    return generate_password_hash(pw)
 
 
 def init_db():
@@ -134,12 +134,12 @@ def login():
 
     conn = get_db()
     row = conn.execute(
-        'SELECT * FROM users WHERE username = ? AND password = ?',
-        (username, hash_pw(password))
+        'SELECT * FROM users WHERE username = ?',
+        (username,)
     ).fetchone()
     conn.close()
 
-    if not row:
+    if not row or not check_password_hash(row['password'], password):
         return jsonify({'success': False, 'message': '아이디 또는 비밀번호가 올바르지 않습니다.'}), 401
 
     session['user'] = {'username': row['username'], 'role': row['role'], 'name': row['name']}
