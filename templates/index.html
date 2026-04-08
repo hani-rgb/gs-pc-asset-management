@@ -11,7 +11,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: 'Inter', 'Malgun Gothic', -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #f5f7fa; color: #1e2532;
+  background: #f0f2f5; color: #1e2532;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -47,25 +47,29 @@ body {
 /* ── 상단 요약 카드 4개 ── */
 .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 28px; }
 .card {
-  background: #fff; border-radius: 16px; padding: 24px 28px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  background: #fff; border-radius: 18px; padding: 26px 28px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.06);
   position: relative; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s;
 }
-.card:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.13), 0 2px 8px rgba(0,0,0,0.07); transform: translateY(-4px); }
+.card:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.12); transform: translateY(-3px); }
 .card::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
   background: linear-gradient(90deg, #1a3a5c, #3b82f6);
 }
 .card.ok::before   { background: linear-gradient(90deg, #059669, #34d399); }
 .card.warn::before { background: linear-gradient(90deg, #dc2626, #f97316); }
 .card.info::before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+/* 카드 배경 색조 */
+.card.ok   { background: linear-gradient(160deg, #fff 60%, #f0fdf8); }
+.card.warn { background: linear-gradient(160deg, #fff 60%, #fff5f5); }
+.card.info { background: linear-gradient(160deg, #fff 60%, #faf5ff); }
 .card-icon { font-size: 28px; margin-bottom: 12px; line-height: 1; }
-.card-label { font-size: 12px; font-weight: 600; color: #8b95a8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-.card-value { font-size: 36px; font-weight: 700; color: #1e2532; line-height: 1; margin-bottom: 6px; }
+.card-label { font-size: 11px; font-weight: 700; color: #8b95a8; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 8px; }
+.card-value { font-size: 42px; font-weight: 800; color: #1e2532; line-height: 1; margin-bottom: 6px; letter-spacing: -1px; }
 .card-value.warn { color: #dc2626; }
 .card-value.ok   { color: #059669; }
 .card-sub { font-size: 12px; color: #b0b8c8; }
-.card-unit { font-size: 16px; font-weight: 500; color: #b0b8c8; margin-left: 5px; }
+.card-unit { font-size: 18px; font-weight: 600; color: #b0b8c8; margin-left: 4px; }
 
 /* ── 카드 백그라운드 아이콘 ── */
 .card-bg-icon {
@@ -87,11 +91,14 @@ body {
   gap: 20px;
 }
 .panel {
-  background: #fff; border-radius: 16px; padding: 28px 28px 24px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+  background: #fff; border-radius: 18px; padding: 28px 28px 24px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.06);
   transition: box-shadow 0.2s, transform 0.2s;
 }
-.panel:hover { box-shadow: 0 12px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06); transform: translateY(-4px); }
+.panel:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.10); transform: translateY(-3px); }
+/* 3열 패널 높이 통일 */
+.dash-panels { align-items: stretch; }
+.dash-panels > .panel { min-height: 240px; }
 .panel-title {
   font-size: 13px; font-weight: 700; color: #8b95a8;
   text-transform: uppercase; letter-spacing: 0.6px;
@@ -345,6 +352,27 @@ tbody tr:last-child td { border-bottom: none; }
   .main { padding: 16px; }
 }
 
+/* ── 설정 모달 ── */
+.settings-modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35); z-index: 800;
+  align-items: center; justify-content: center;
+}
+.settings-modal-overlay.open { display: flex; }
+.settings-modal {
+  background: white; border-radius: 20px;
+  width: 420px; max-width: 94vw;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+.settings-modal-header {
+  background: linear-gradient(135deg, #0f2540, #1a3a5c);
+  color: white; padding: 20px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.settings-modal-header h3 { font-size: 15px; font-weight: 700; }
+.settings-modal-body { padding: 28px 24px 24px; }
+
 /* ── 로그인 ── */
 .login-overlay {
   display: flex; position: fixed; inset: 0;
@@ -433,6 +461,17 @@ tbody tr:last-child td { border-bottom: none; }
   <!-- ── 대시보드 ──────────────────────────────── -->
   <div id="page-dashboard" class="page active">
 
+    <!-- 대시보드 헤더 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:20px;font-weight:800;color:#1e2532;letter-spacing:-0.3px">자산 현황 대시보드</div>
+        <div style="font-size:12px;color:#b0b8c8;margin-top:3px">GS에너지 보유 PC 자산 통합 현황</div>
+      </div>
+      <button onclick="openSettingsModal()" style="display:flex;align-items:center;gap:7px;padding:8px 16px;background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;font-size:13px;font-weight:600;color:#4b5563;cursor:pointer;transition:all 0.2s" onmouseover="this.style.background='#f0f6ff';this.style.borderColor='#bfdbfe'" onmouseout="this.style.background='#f8fafc';this.style.borderColor='#e2e8f0'">
+        ⚙️ 교체 기준 설정 <span id="years-badge" style="background:#1a3a5c;color:white;border-radius:12px;padding:1px 8px;font-size:11px">5년</span>
+      </button>
+    </div>
+
     <!-- KPI 카드 4개 -->
     <div class="cards">
       <div class="card">
@@ -505,29 +544,6 @@ tbody tr:last-child td { border-bottom: none; }
             <div id="d-by-type"></div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <!-- 하단 — 교체 검토 기준 설정 (전체 너비) -->
-    <div class="panel" style="padding:32px 36px 36px">
-      <div class="panel-title" style="justify-content:center">
-        <div class="panel-title-left">
-          <div class="panel-icon orange">⚙️</div>
-          <span>교체 검토 기준 설정</span>
-        </div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 4px;gap:14px">
-        <div style="font-size:14px;color:#4b5563;line-height:1.7">
-          도입 후 <strong style="color:#1e2532" id="years-display">5</strong>년 이상 경과한 기기를<br>교체 검토 대상으로 표시합니다.
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;justify-content:center">
-          <span style="font-size:13px;color:#8b95a8;font-weight:500">기준 연수</span>
-          <input type="number" class="years-input" id="years-input" min="1" max="20" value="5" style="width:68px;height:36px;font-size:16px">
-          <span style="font-size:13px;color:#8b95a8">년</span>
-          <button class="btn btn-primary btn-sm" style="height:36px;padding:0 18px;font-size:14px" onclick="saveYears()">적용</button>
-        </div>
-        <div style="font-size:12px;color:#b0b8c8">※ 변경 즉시 대시보드와 목록 필터에 반영됩니다</div>
-        <button class="btn btn-navy btn-sm" style="padding:8px 20px" onclick="showPage('assets'); setOldFilter()">교체 검토 대상 목록 보기 →</button>
       </div>
     </div>
 
@@ -677,6 +693,30 @@ tbody tr:last-child td { border-bottom: none; }
   </div>
 </div>
 
+<!-- 교체 기준 설정 모달 -->
+<div class="settings-modal-overlay" id="settings-modal" onclick="if(event.target===this)closeSettingsModal()">
+  <div class="settings-modal">
+    <div class="settings-modal-header">
+      <h3>⚙️ 교체 검토 기준 설정</h3>
+      <button onclick="closeSettingsModal()" style="background:none;border:none;color:rgba(255,255,255,0.7);font-size:20px;cursor:pointer;line-height:1">×</button>
+    </div>
+    <div class="settings-modal-body">
+      <div style="font-size:14px;color:#4b5563;line-height:1.8;margin-bottom:20px">
+        도입 후 <strong style="color:#1e2532" id="years-display">5</strong>년 이상 경과한 기기를<br>
+        교체 검토 대상으로 표시합니다.
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="font-size:13px;color:#8b95a8;font-weight:600">기준 연수</span>
+        <input type="number" class="years-input" id="years-input" min="1" max="20" value="5" style="width:72px;height:40px;font-size:18px">
+        <span style="font-size:13px;color:#8b95a8">년</span>
+        <button class="btn btn-primary btn-sm" style="height:40px;padding:0 20px;font-size:14px" onclick="saveYears()">적용</button>
+      </div>
+      <div style="font-size:12px;color:#b0b8c8;margin-bottom:20px">※ 변경 즉시 대시보드와 목록 필터에 반영됩니다</div>
+      <button class="btn btn-navy btn-sm" style="width:100%;padding:10px" onclick="closeSettingsModal();showPage('assets');setOldFilter()">교체 검토 대상 목록 보기 →</button>
+    </div>
+  </div>
+</div>
+
 <!-- 확인 모달 -->
 <div class="modal-overlay" id="confirm-modal">
   <div class="confirm-modal">
@@ -814,6 +854,8 @@ async function loadDashboard() {
   replaceYears = data.replace_years;
   document.getElementById('years-input').value = replaceYears;
   document.getElementById('years-display').textContent = replaceYears;
+  const badge = document.getElementById('years-badge');
+  if (badge) badge.textContent = `${replaceYears}년`;
 
   const unit = n => `${n.toLocaleString()}<span class="card-unit">대</span>`;
   document.getElementById('d-total').innerHTML = unit(data.total);
@@ -930,6 +972,13 @@ function renderDonut(elId, rows, key) {
   </div>`;
 }
 
+function openSettingsModal() {
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+
 async function saveYears() {
   const val = parseInt(document.getElementById('years-input').value);
   if (!val || val < 1 || val > 20) { alert('1~20 사이의 연수를 입력하세요.'); return; }
@@ -939,7 +988,10 @@ async function saveYears() {
     body: JSON.stringify({replace_years: String(val)})
   });
   replaceYears = val;
+  const badge = document.getElementById('years-badge');
+  if (badge) badge.textContent = `${val}년`;
   loadDashboard();
+  closeSettingsModal();
   showToast(`교체 기준이 ${val}년으로 변경되었습니다.`);
 }
 
