@@ -484,14 +484,27 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
         <div id="d-by-status"></div>
       </div>
-      <div class="panel">
+      <div class="panel" style="display:flex;flex-direction:column;">
         <div class="panel-title">
           <div class="panel-title-left">
-            <div class="panel-icon purple">🏭</div>
-            <span>제조사별 현황</span>
+            <div class="panel-icon purple">📦</div>
+            <span>자산 구성 현황</span>
           </div>
         </div>
-        <div id="d-by-maker"></div>
+        <div style="display:flex;gap:0;flex:1;min-height:0">
+          <!-- 왼쪽: 제조사별 바 차트 -->
+          <div style="flex:1;min-width:0;padding-right:20px">
+            <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">제조사별</div>
+            <div id="d-by-maker"></div>
+          </div>
+          <!-- 구분선 -->
+          <div style="width:1px;background:#f1f4f9;flex-shrink:0;margin:0 4px"></div>
+          <!-- 오른쪽: 기기종류 카드형 -->
+          <div style="flex:1;min-width:0;padding-left:20px">
+            <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">기기종류별</div>
+            <div id="d-by-type"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -817,6 +830,7 @@ async function loadDashboard() {
   renderStatList('d-by-site',   data.by_site,   '사업장', data.total, 'site');
   renderStatList('d-by-status', data.by_status, '상태',   data.total, 'status');
   renderStatList('d-by-maker',  data.by_maker,  '제조사', data.total, 'maker');
+  renderDeviceCards('d-by-type', data.by_type, data.total);
 }
 
 function renderStatList(elId, rows, key, total, colorType) {
@@ -841,6 +855,35 @@ function renderStatList(elId, rows, key, total, colorType) {
   requestAnimationFrame(() => requestAnimationFrame(() => {
     el.querySelectorAll('.stat-bar[data-w]').forEach(b => { b.style.width = b.dataset.w; });
   }));
+}
+
+const DEVICE_META = {
+  '노트북':  { icon: '💻', bg: '#eff6ff', border: '#bfdbfe', color: '#1d4ed8' },
+  'Mac':     { icon: '🍎', bg: '#f8fafc', border: '#cbd5e1', color: '#475569' },
+  '데스크톱': { icon: '🖥️', bg: '#f0fdfa', border: '#99f6e4', color: '#0f766e' },
+  '기타':    { icon: '📦', bg: '#fafafa', border: '#e5e7eb', color: '#6b7280' },
+};
+
+function renderDeviceCards(elId, rows, total) {
+  const el = document.getElementById(elId);
+  if (!rows || !rows.length) { el.innerHTML = '<div style="color:#aaa;font-size:13px">데이터 없음</div>'; return; }
+  el.innerHTML = rows.map(r => {
+    const key = r['기기종류'] || '기타';
+    const meta = DEVICE_META[key] || DEVICE_META['기타'];
+    const pct = total > 0 ? Math.round(r['수량'] / total * 100) : 0;
+    return `<div style="
+      display:flex;align-items:center;gap:10px;
+      background:${meta.bg};border:1.5px solid ${meta.border};
+      border-radius:12px;padding:10px 14px;margin-bottom:8px;
+    ">
+      <span style="font-size:22px;line-height:1">${meta.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:${meta.color}">${key}</div>
+        <div style="font-size:11px;color:#94a3b8;margin-top:1px">${pct}%</div>
+      </div>
+      <div style="font-size:22px;font-weight:800;color:${meta.color};letter-spacing:-0.5px">${r['수량'].toLocaleString()}<span style="font-size:12px;font-weight:500;margin-left:2px;color:#94a3b8">대</span></div>
+    </div>`;
+  }).join('');
 }
 
 function renderDonut(elId, rows, key) {
