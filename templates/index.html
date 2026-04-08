@@ -914,6 +914,16 @@ function calcYears(dateStr) {
   return diff;
 }
 
+function formatYears(yrs) {
+  if (yrs === null) return '-';
+  const totalMonths = Math.floor(yrs * 12);
+  const y = Math.floor(totalMonths / 12);
+  const m = totalMonths % 12;
+  if (y === 0) return `${m}개월`;
+  if (m === 0) return `${y}년`;
+  return `${y}년 ${m}개월`;
+}
+
 async function loadAssets() {
   const params = new URLSearchParams();
   const s      = document.getElementById('search-input').value;
@@ -1023,9 +1033,9 @@ function sortTable(key) {
 function renderRow(a) {
   const badge = `<span class="badge badge-${a['상태'] || 'default'}">${a['상태'] || '-'}</span>`;
   const yrs = calcYears(a['도입일']);
-  const yrsText = yrs !== null ? `${yrs.toFixed(1)}년` : '-';
-  const oldBadge = (yrs !== null && yrs >= replaceYears)
-    ? `<span class="old-badge">${replaceYears}년+</span>` : '';
+  const yrsText = formatYears(yrs);
+  const isOld = yrs !== null && yrs >= replaceYears;
+  const oldBadge = isOld ? `<span class="old-badge">${replaceYears}년+</span>` : '';
   const assetNo = a['자산번호']
     ? `<span style="font-size:12px;color:#888">${a['자산번호']}</span>`
     : `<span style="font-size:12px;color:#c0c8d8">미등록</span>`;
@@ -1041,7 +1051,7 @@ function renderRow(a) {
     <td>${a['모델명'] || '-'}</td>
     <td style="font-size:12px;color:#666;font-family:monospace;white-space:nowrap">${a['시리얼번호'] || '-'}</td>
     <td style="white-space:nowrap">${a['도입일'] || '-'}</td>
-    <td style="white-space:nowrap">${yrsText} ${oldBadge}</td>
+    <td style="white-space:nowrap${isOld ? ';color:#dc2626;font-weight:600' : ''}">${yrsText} ${oldBadge}</td>
     <td onclick="event.stopPropagation()">
       ${currentRole === 'admin' ? `<button class="btn btn-primary btn-sm" onclick="startInlineEdit(${a.id})">수정</button>` : ''}
     </td>
