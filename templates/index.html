@@ -119,15 +119,15 @@ body {
 /* ── 통계 바 ── */
 .stat-row {
   display: flex; align-items: center;
-  padding: 11px 0; gap: 14px;
+  padding: 11px 0; gap: 10px;
 }
 .stat-row + .stat-row { border-top: 1px solid #f5f7fa; }
-.stat-label { font-size: 13px; font-weight: 500; color: #4b5563; min-width: 95px; flex-shrink: 0; }
+.stat-label { font-size: 13px; font-weight: 600; color: #4b5563; min-width: 0; flex-shrink: 0; white-space: nowrap; }
 .stat-bar-wrap {
-  flex: 1; background: #f1f4f9; border-radius: 99px; height: 12px; overflow: hidden;
+  flex: 1; background: #f1f4f9; border-radius: 99px; height: 10px; overflow: hidden; min-width: 40px;
 }
 .stat-bar {
-  height: 12px; border-radius: 99px;
+  height: 10px; border-radius: 99px;
   transition: width 0.75s cubic-bezier(0.4,0,0.2,1);
   position: relative;
 }
@@ -153,8 +153,8 @@ body {
 .bar-type-데스크톱 { background: linear-gradient(90deg, #1e40af, #93c5fd); }
 .bar-type-기타     { background: linear-gradient(90deg, #075985, #7dd3fc); }
 
-.stat-count { font-size: 18px; font-weight: 800; color: #1e2532; min-width: 56px; text-align: right; letter-spacing: -0.5px; }
-.stat-pct { font-size: 11px; font-weight: 700; color: #8b95a8; min-width: 34px; text-align: right; }
+.stat-count { font-size: 16px; font-weight: 800; color: #1e2532; flex-shrink: 0; text-align: right; letter-spacing: -0.5px; white-space: nowrap; }
+.stat-pct { font-size: 11px; font-weight: 700; color: #94a3b8; flex-shrink: 0; text-align: right; white-space: nowrap; min-width: 30px; }
 
 /* ── 버튼 공통 ── */
 .btn-navy { background: linear-gradient(135deg, #0f2540, #1a3a5c); color: white; }
@@ -530,16 +530,16 @@ tbody tr:last-child td { border-bottom: none; }
             <span>자산 구성 현황</span>
           </div>
         </div>
-        <div style="display:flex;gap:0;flex:1;min-height:0">
-          <!-- 왼쪽: 제조사별 바 차트 -->
-          <div style="flex:1;min-width:0;padding-right:20px">
+        <div style="display:flex;flex:1;min-height:0">
+          <!-- 왼쪽: 제조사별 -->
+          <div style="flex:1;min-width:0;padding-right:24px;overflow:hidden">
             <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">제조사별</div>
             <div id="d-by-maker"></div>
           </div>
           <!-- 구분선 -->
-          <div style="width:1px;background:#f1f4f9;flex-shrink:0;margin:0 4px"></div>
-          <!-- 오른쪽: 기기종류 카드형 -->
-          <div style="flex:1;min-width:0;padding-left:20px">
+          <div style="width:1px;background:linear-gradient(180deg,transparent,#e2e8f0 20%,#e2e8f0 80%,transparent);flex-shrink:0;margin:0 8px"></div>
+          <!-- 오른쪽: 기기종류 -->
+          <div style="flex:1;min-width:0;padding-left:24px;overflow:hidden">
             <div style="font-size:11px;font-weight:700;color:#8b95a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px">기기종류별</div>
             <div id="d-by-type"></div>
           </div>
@@ -885,11 +885,10 @@ function renderStatList(elId, rows, key, total, colorType) {
     if (colorType === 'status') barClass = `bar-status-${r[key] || ''}`;
     if (colorType === 'type')   barClass = `bar-type-${r[key] || ''}`;
     if (colorType === 'maker')  barClass = `bar-site-${i}`;
-    const pctLabel = (colorType === 'status' || colorType === 'maker') ? `<span class="stat-pct">${pct}%</span>` : '';
     return `<div class="stat-row">
       <span class="stat-label">${r[key] || '미지정'}</span>
       <div class="stat-bar-wrap"><div class="stat-bar ${barClass}" style="width:0%" data-w="${pct}%"></div></div>
-      ${pctLabel}
+      <span class="stat-pct">${pct}%</span>
       <span class="stat-count">${r['수량'].toLocaleString()}<span style="font-size:11px;font-weight:500;color:#b0b8c8;margin-left:2px">대</span></span>
     </div>`;
   }).join('');
