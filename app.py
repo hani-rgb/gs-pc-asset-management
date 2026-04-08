@@ -371,7 +371,7 @@ def dashboard():
     total     = conn.execute('SELECT COUNT(*) FROM assets').fetchone()[0]
     by_site   = conn.execute('SELECT 사업장, COUNT(*) as 수량 FROM assets GROUP BY 사업장 ORDER BY 수량 DESC').fetchall()
     by_status = conn.execute('SELECT 상태, COUNT(*) as 수량 FROM assets GROUP BY 상태 ORDER BY 수량 DESC').fetchall()
-    by_type   = conn.execute('SELECT 기기종류, COUNT(*) as 수량 FROM assets GROUP BY 기기종류').fetchall()
+    by_maker  = conn.execute('SELECT COALESCE(NULLIF(제조사,\'\'), \'기타\') as 제조사, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC').fetchall()
     old_count = conn.execute(
         "SELECT COUNT(*) FROM assets WHERE 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= ?",
         (cutoff,)
@@ -382,7 +382,7 @@ def dashboard():
         'total': total,
         'by_site': [dict(r) for r in by_site],
         'by_status': [dict(r) for r in by_status],
-        'by_type': [dict(r) for r in by_type],
+        'by_maker': [dict(r) for r in by_maker],
         'old_count': old_count,
         'replace_years': replace_years,
     })

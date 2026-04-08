@@ -427,10 +427,13 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="panel-title">
           <div class="panel-title-left">
             <div class="panel-icon blue">🏢</div>
-            <span>사업장별 현황</span>
+            <span>사용사업장별</span>
           </div>
         </div>
         <div id="d-by-site"></div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid #f1f4f9;font-size:11px;color:#b0b8c8;line-height:1.6">
+          GS에너지 보유 자산 기준 / 사용 위치별 집계
+        </div>
       </div>
       <div class="panel">
         <div class="panel-title">
@@ -444,42 +447,34 @@ tbody tr:last-child td { border-bottom: none; }
       <div class="panel">
         <div class="panel-title">
           <div class="panel-title-left">
-            <div class="panel-icon purple">💻</div>
-            <span>기기 종류별</span>
+            <div class="panel-icon purple">🏭</div>
+            <span>제조사별 현황</span>
           </div>
         </div>
-        <div id="d-by-type"></div>
+        <div id="d-by-maker"></div>
       </div>
     </div>
 
-    <!-- 하단 2열 -->
-    <div class="dash-panels-bottom">
-      <div class="panel" style="padding:32px 36px 36px">
-        <div class="panel-title" style="justify-content:center">
-          <div class="panel-title-left">
-            <div class="panel-icon orange">⚙️</div>
-            <span>교체 검토 기준 설정</span>
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 4px;gap:14px">
-          <div style="font-size:14px;color:#4b5563;line-height:1.7">
-            도입 후 <strong style="color:#1e2532" id="years-display">5</strong>년 이상 경과한 기기를<br>교체 검토 대상으로 표시합니다.
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;justify-content:center">
-            <span style="font-size:13px;color:#8b95a8;font-weight:500">기준 연수</span>
-            <input type="number" class="years-input" id="years-input" min="1" max="20" value="5" style="width:68px;height:36px;font-size:16px">
-            <span style="font-size:13px;color:#8b95a8">년</span>
-            <button class="btn btn-primary btn-sm" style="height:36px;padding:0 18px;font-size:14px" onclick="saveYears()">적용</button>
-          </div>
-          <div style="font-size:12px;color:#b0b8c8">※ 변경 즉시 대시보드와 목록 필터에 반영됩니다</div>
-          <button class="btn btn-navy btn-sm" style="padding:8px 20px" onclick="showPage('assets'); setOldFilter()">교체 검토 대상 목록 보기 →</button>
+    <!-- 하단 — 교체 검토 기준 설정 (전체 너비) -->
+    <div class="panel" style="padding:32px 36px 36px">
+      <div class="panel-title" style="justify-content:center">
+        <div class="panel-title-left">
+          <div class="panel-icon orange">⚙️</div>
+          <span>교체 검토 기준 설정</span>
         </div>
       </div>
-      <div class="panel" style="display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:10px;background:linear-gradient(135deg,#f0f6ff,#e8f0fe)">
-        <div style="font-size:40px">📋</div>
-        <div style="font-size:16px;font-weight:700;color:#1a3a5c">자산 실사 준비</div>
-        <div style="font-size:13px;color:#5b7aa9;line-height:1.7">실사 시 직접 자산 등록 및 수정이 가능합니다.<br>교체 검토 대상 <strong id="d-old-remind" style="color:#dc2626">-</strong>대를 우선 확인하세요.</div>
-        <button class="btn btn-primary btn-sm admin-only" style="margin-top:4px" onclick="showPage('register')">+ 신규 자산 등록하기</button>
+      <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 4px;gap:14px">
+        <div style="font-size:14px;color:#4b5563;line-height:1.7">
+          도입 후 <strong style="color:#1e2532" id="years-display">5</strong>년 이상 경과한 기기를<br>교체 검토 대상으로 표시합니다.
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;justify-content:center">
+          <span style="font-size:13px;color:#8b95a8;font-weight:500">기준 연수</span>
+          <input type="number" class="years-input" id="years-input" min="1" max="20" value="5" style="width:68px;height:36px;font-size:16px">
+          <span style="font-size:13px;color:#8b95a8">년</span>
+          <button class="btn btn-primary btn-sm" style="height:36px;padding:0 18px;font-size:14px" onclick="saveYears()">적용</button>
+        </div>
+        <div style="font-size:12px;color:#b0b8c8">※ 변경 즉시 대시보드와 목록 필터에 반영됩니다</div>
+        <button class="btn btn-navy btn-sm" style="padding:8px 20px" onclick="showPage('assets'); setOldFilter()">교체 검토 대상 목록 보기 →</button>
       </div>
     </div>
 
@@ -733,7 +728,7 @@ async function loadDashboard() {
 
   renderStatList('d-by-site',   data.by_site,   '사업장', data.total, 'site');
   renderStatList('d-by-status', data.by_status, '상태',   data.total, 'status');
-  renderDonut('d-by-type', data.by_type, '기기종류');
+  renderStatList('d-by-maker',  data.by_maker,  '제조사', data.total, 'maker');
 }
 
 function renderStatList(elId, rows, key, total, colorType) {
@@ -745,7 +740,8 @@ function renderStatList(elId, rows, key, total, colorType) {
     if (colorType === 'site')   barClass = `bar-site-${i}`;
     if (colorType === 'status') barClass = `bar-status-${r[key] || ''}`;
     if (colorType === 'type')   barClass = `bar-type-${r[key] || ''}`;
-    const pctLabel = colorType === 'status' ? `<span class="stat-pct">${pct}%</span>` : '';
+    if (colorType === 'maker')  barClass = `bar-site-${i}`;
+    const pctLabel = (colorType === 'status' || colorType === 'maker') ? `<span class="stat-pct">${pct}%</span>` : '';
     return `<div class="stat-row">
       <span class="stat-label">${r[key] || '미지정'}</span>
       <div class="stat-bar-wrap"><div class="stat-bar ${barClass}" style="width:0%" data-w="${pct}%"></div></div>
