@@ -308,15 +308,32 @@ thead .col-sticky:hover { background: #EBEBF0; }
   display: none; position: absolute; top: 100%; right: 0; z-index: 600;
   background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12); padding: 12px 16px;
-  min-width: 200px;
+  min-width: 240px; max-height: 480px; overflow-y: auto;
 }
 .col-settings-panel.open { display: block; }
-.col-settings-panel label {
-  display: flex; align-items: center; gap: 8px; padding: 6px 0;
-  font-size: 13px; color: #1c1c1e; cursor: pointer;
+.col-settings-title {
+  font-size: 11px; font-weight: 600; color: #8E8E93; text-transform: uppercase;
+  letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0;
 }
-.col-settings-panel label:hover { color: #007AFF; }
-.col-settings-panel input[type="checkbox"] { accent-color: #007AFF; }
+.col-settings-item {
+  display: flex; align-items: center; gap: 8px; padding: 7px 4px;
+  font-size: 13px; color: #1c1c1e; cursor: grab; border-radius: 6px;
+  border: 1px solid transparent; transition: background 0.15s;
+}
+.col-settings-item:hover { background: #f3f4f6; }
+.col-settings-item.dragging { opacity: 0.4; background: #e8f0fe; }
+.col-settings-item.drag-over-top { border-top: 2px solid #007AFF; }
+.col-settings-item.drag-over-bottom { border-bottom: 2px solid #007AFF; }
+.col-settings-grip { color: #c0c0c0; font-size: 14px; cursor: grab; user-select: none; }
+.col-settings-label { flex: 1; user-select: none; }
+.col-settings-item input[type="checkbox"] { accent-color: #007AFF; cursor: pointer; }
+.col-settings-reset {
+  margin-top: 8px; padding-top: 8px; border-top: 1px solid #e2e8f0; text-align: center;
+}
+.col-settings-reset button {
+  font-size: 12px; color: #007AFF; background: none; border: none; cursor: pointer; padding: 4px 8px;
+}
+.col-settings-reset button:hover { text-decoration: underline; }
 .sort-arrow { font-size: 10px; margin-left: 3px; opacity: 0.3; color: #8E8E93; }
 thead th.sort-active .sort-arrow { opacity: 1; color: #007AFF; }
 
@@ -745,48 +762,7 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="table-wrap">
       <table id="asset-table">
         <thead>
-          <tr>
-            <!-- 고정 컬럼 (sticky) -->
-            <th class="sortable col-sticky col-sticky-0" data-col="사용자명" id="th-사용자명" onclick="sortTable('사용자명')">사용자명 <span class="sort-arrow">⇅</span></th>
-            <th class="sortable col-sticky col-sticky-1" data-col="부서명" id="th-부서명">
-              <div class="th-inner">
-                <span onclick="sortTable('부서명')">부서명 <span class="sort-arrow">⇅</span></span>
-                <button class="col-filter-btn" id="cfb-부서명" onclick="event.stopPropagation();toggleColFilter('부서명','filter-dept',this)" title="필터">⊟</button>
-              </div>
-            </th>
-            <th class="sortable col-sticky col-sticky-2" data-col="상태" id="th-상태">
-              <div class="th-inner">
-                <span onclick="sortTable('상태')">상태 <span class="sort-arrow">⇅</span></span>
-                <button class="col-filter-btn" id="cfb-상태" onclick="event.stopPropagation();toggleColFilter('상태','filter-status',this)" title="필터">⊟</button>
-              </div>
-            </th>
-            <th class="sortable col-sticky col-sticky-3" data-col="모델명" id="th-모델명" onclick="sortTable('모델명')">모델명 <span class="sort-arrow">⇅</span></th>
-            <th class="sortable col-sticky col-sticky-4" data-col="사용연수" id="th-연수" onclick="sortTable('도입일')">사용연수 <span class="sort-arrow">⇅</span></th>
-            <!-- 스크롤 컬럼 -->
-            <th class="sortable" data-col="사업장" id="th-사업장">
-              <div class="th-inner">
-                <span onclick="sortTable('사업장')">사업장 <span class="sort-arrow">⇅</span></span>
-                <button class="col-filter-btn" id="cfb-사업장" onclick="event.stopPropagation();toggleColFilter('사업장','filter-site',this)" title="필터">⊟</button>
-              </div>
-            </th>
-            <th class="sortable" data-col="자산번호" id="th-자산번호" onclick="sortTable('자산번호')">자산번호 <span class="sort-arrow">⇅</span></th>
-            <th class="sortable" data-col="사번" id="th-사번" onclick="sortTable('사번')">사번 <span class="sort-arrow">⇅</span></th>
-            <th class="sortable" data-col="기기종류" id="th-기기종류">
-              <div class="th-inner">
-                <span onclick="sortTable('기기종류')">기기종류 <span class="sort-arrow">⇅</span></span>
-                <button class="col-filter-btn" id="cfb-기기종류" onclick="event.stopPropagation();toggleColFilter('기기종류','filter-device',this)" title="필터">⊟</button>
-              </div>
-            </th>
-            <th class="sortable" data-col="제조사" id="th-제조사">
-              <div class="th-inner">
-                <span onclick="sortTable('제조사')">제조사 <span class="sort-arrow">⇅</span></span>
-                <button class="col-filter-btn" id="cfb-제조사" onclick="event.stopPropagation();toggleColFilter('제조사','filter-maker',this)" title="필터">⊟</button>
-              </div>
-            </th>
-            <th class="sortable" data-col="시리얼번호" id="th-시리얼번호" onclick="sortTable('시리얼번호')">S/N <span class="sort-arrow">⇅</span></th>
-            <th class="sortable" data-col="도입일" id="th-도입일" onclick="sortTable('도입일')">도입일 <span class="sort-arrow">⇅</span></th>
-            <th data-col="관리">관리</th>
-          </tr>
+          <tr id="header-row"></tr>
         </thead>
         <tbody id="asset-tbody"></tbody>
       </table>
@@ -986,7 +962,7 @@ function showPage(name) {
   const idx = ['dashboard','assets','register'].indexOf(name);
   if (idx >= 0) document.querySelectorAll('.nav-tab')[idx].classList.add('active');
   if (name === 'dashboard') loadDashboard();
-  if (name === 'assets') loadAssets();
+  if (name === 'assets') { buildHeader(); loadAssets(); }
   if (name === 'register') renderRegisterPage();
 }
 
@@ -1435,7 +1411,7 @@ async function loadAssets() {
   else if (old) params.set('age_range', old);
 
   document.getElementById('asset-tbody').innerHTML =
-    '<tr><td colspan="13" class="loading">로딩 중...</td></tr>';
+    `<tr><td colspan="${getColOrder().length}" class="loading">로딩 중...</td></tr>`;
 
   try {
     currentAssets = await authFetch('/api/assets?' + params).then(r => r.json());
@@ -1531,23 +1507,44 @@ function renderRow(a) {
   const assetNo = a['자산번호']
     ? `<span style="font-size:12px;color:#888">${a['자산번호']}</span>`
     : `<span style="font-size:12px;color:#c0c8d8">미등록</span>`;
-  return `<tr data-id="${a.id}" onclick="showDetail(${a.id})">
-    <td class="col-sticky col-sticky-0" data-col="사용자명" style="white-space:nowrap;font-weight:600;color:#1D1D1F">${a['사용자명'] || '-'}</td>
-    <td class="col-sticky col-sticky-1" data-col="부서명" style="white-space:nowrap;color:#6E6E73">${a['부서명'] || '-'}</td>
-    <td class="col-sticky col-sticky-2" data-col="상태">${badge}</td>
-    <td class="col-sticky col-sticky-3" data-col="모델명">${a['모델명'] || '-'}</td>
-    <td class="col-sticky col-sticky-4" data-col="사용연수" style="white-space:nowrap${isOld ? ';color:#dc2626;font-weight:600' : ''}">${yrsText} ${oldBadge}</td>
-    <td data-col="사업장" style="white-space:nowrap">${a['사업장'] || '-'}</td>
-    <td data-col="자산번호">${assetNo}</td>
-    <td data-col="사번">${a['사번'] || '-'}</td>
-    <td data-col="기기종류" style="white-space:nowrap">${a['기기종류'] || '-'}</td>
-    <td data-col="제조사" style="white-space:nowrap">${a['제조사'] || '-'}</td>
-    <td data-col="시리얼번호" style="font-size:12px;color:#666;font-family:monospace;white-space:nowrap">${a['시리얼번호'] || '-'}</td>
-    <td data-col="도입일" style="white-space:nowrap">${a['도입일'] || '-'}</td>
-    <td data-col="관리" onclick="event.stopPropagation()">
-      ${currentRole === 'admin' ? `<button class="btn-outline-sm" onclick="startInlineEdit(${a.id})">수정</button>` : ''}
-    </td>
-  </tr>`;
+
+  const CELL = {
+    '사용자명': { style: 'white-space:nowrap;font-weight:600;color:#1D1D1F', html: a['사용자명'] || '-' },
+    '부서명':   { style: 'white-space:nowrap;color:#6E6E73', html: a['부서명'] || '-' },
+    '상태':     { html: badge },
+    '모델명':   { html: a['모델명'] || '-' },
+    '사용연수': { style: `white-space:nowrap${isOld ? ';color:#dc2626;font-weight:600' : ''}`, html: `${yrsText} ${oldBadge}` },
+    '사업장':   { style: 'white-space:nowrap', html: a['사업장'] || '-' },
+    '자산번호': { html: assetNo },
+    '사번':     { html: a['사번'] || '-' },
+    '기기종류': { style: 'white-space:nowrap', html: a['기기종류'] || '-' },
+    '제조사':   { style: 'white-space:nowrap', html: a['제조사'] || '-' },
+    '시리얼번호': { style: 'font-size:12px;color:#666;font-family:monospace;white-space:nowrap', html: a['시리얼번호'] || '-' },
+    '도입일':   { style: 'white-space:nowrap', html: a['도입일'] || '-' },
+    '관리':     { extra: 'onclick="event.stopPropagation()"', html: currentRole === 'admin' ? `<button class="btn-outline-sm" onclick="startInlineEdit(${a.id})">수정</button>` : '' },
+  };
+
+  const order = getColOrder();
+  const settings = getColSettings();
+  let stickyIdx = 0;
+
+  const cells = order.map(col => {
+    const c = CELL[col];
+    if (!c) return '';
+    const isHidden = settings[col] === false;
+    let cls = [];
+    if (!isHidden && stickyIdx < STICKY_COUNT) {
+      cls.push('col-sticky', `col-sticky-${stickyIdx}`);
+      stickyIdx++;
+    }
+    if (isHidden) cls.push('col-hidden');
+    const clsStr = cls.length ? ` class="${cls.join(' ')}"` : '';
+    const styleStr = c.style ? ` style="${c.style}"` : '';
+    const extraStr = c.extra ? ` ${c.extra}` : '';
+    return `<td${clsStr} data-col="${col}"${styleStr}${extraStr}>${c.html}</td>`;
+  }).join('');
+
+  return `<tr data-id="${a.id}" onclick="showDetail(${a.id})">${cells}</tr>`;
 }
 
 function renderTable() {
@@ -1556,7 +1553,8 @@ function renderTable() {
     `검색 결과: ${currentAssets.length.toLocaleString()}건`;
 
   if (!currentAssets.length) {
-    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">
+    const colCount = getColOrder().length;
+    tbody.innerHTML = `<tr><td colspan="${colCount}"><div class="empty-state">
       <div class="empty-state-icon">📭</div>
       <div>검색 결과가 없습니다</div></div></td></tr>`;
     return;
@@ -1598,21 +1596,75 @@ function renderTable() {
   initColumnResize();
 }
 
-// ─── 컬럼 표시/숨기기 설정 ─────────────────────────────
-const ALL_COLS = ['사용자명','부서명','상태','모델명','사용연수','사업장','자산번호','사번','기기종류','제조사','시리얼번호','도입일','관리'];
-const FIXED_COLS = ['사용자명','부서명','상태','모델명','사용연수']; // 항상 표시, 설정 불가
+// ─── 컬럼 순서 및 표시 설정 ─────────────────────────────
+const DEFAULT_COL_ORDER = ['사용자명','부서명','상태','모델명','사용연수','사업장','자산번호','사번','기기종류','제조사','시리얼번호','도입일','관리'];
+const COL_LABELS = { '시리얼번호': 'S/N' };
+const STICKY_COUNT = 3;
+const FILTER_COLS = {
+  '부서명': 'filter-dept', '상태': 'filter-status',
+  '사업장': 'filter-site', '기기종류': 'filter-device', '제조사': 'filter-maker',
+};
+
+function getColOrder() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('col_order'));
+    if (saved && saved.length === DEFAULT_COL_ORDER.length) return saved;
+  } catch {}
+  return [...DEFAULT_COL_ORDER];
+}
+function saveColOrder(order) { localStorage.setItem('col_order', JSON.stringify(order)); }
 function getColSettings() {
   try { return JSON.parse(localStorage.getItem('col_settings') || '{}'); } catch { return {}; }
 }
 function saveColSettings(s) { localStorage.setItem('col_settings', JSON.stringify(s)); }
 function applyColVisibility() {
   const s = getColSettings();
-  ALL_COLS.forEach(col => {
+  getColOrder().forEach(col => {
     const hidden = s[col] === false;
     document.querySelectorAll(`[data-col="${col}"]`).forEach(el => {
       el.classList.toggle('col-hidden', hidden);
     });
   });
+}
+
+function buildHeader() {
+  const tr = document.getElementById('header-row');
+  tr.innerHTML = '';
+  const order = getColOrder();
+  const settings = getColSettings();
+  let stickyIdx = 0;
+
+  order.forEach(col => {
+    const th = document.createElement('th');
+    th.dataset.col = col;
+    th.id = `th-${col}`;
+    const isHidden = settings[col] === false;
+    if (isHidden) th.classList.add('col-hidden');
+
+    if (!isHidden && stickyIdx < STICKY_COUNT) {
+      th.classList.add('col-sticky', `col-sticky-${stickyIdx}`);
+      stickyIdx++;
+    }
+
+    const label = COL_LABELS[col] || col;
+    const sortKey = col === '사용연수' ? '도입일' : col;
+
+    if (col === '관리') {
+      th.textContent = '관리';
+    } else if (FILTER_COLS[col]) {
+      th.classList.add('sortable');
+      th.innerHTML = `<div class="th-inner">
+        <span onclick="sortTable('${sortKey}')">${label} <span class="sort-arrow">⇅</span></span>
+        <button class="col-filter-btn" id="cfb-${col}" onclick="event.stopPropagation();toggleColFilter('${col}','${FILTER_COLS[col]}',this)" title="필터">⊟</button>
+      </div>`;
+    } else {
+      th.classList.add('sortable');
+      th.setAttribute('onclick', `sortTable('${sortKey}')`);
+      th.innerHTML = `${label} <span class="sort-arrow">⇅</span>`;
+    }
+    tr.appendChild(th);
+  });
+  updateStickyPositions();
 }
 function updateStickyPositions() {
   // 고정 컬럼 left 위치를 실제 너비 기반으로 계산
@@ -1711,18 +1763,72 @@ function toggleColSettings() {
   const panel = document.getElementById('col-settings-panel');
   const isOpen = panel.classList.toggle('open');
   if (isOpen) {
+    const order = getColOrder();
     const s = getColSettings();
-    panel.innerHTML = ALL_COLS.filter(c => !FIXED_COLS.includes(c)).map(col => {
-      const checked = s[col] !== false ? 'checked' : '';
-      return `<label><input type="checkbox" ${checked} onchange="onColToggle('${col}', this.checked)">${col}</label>`;
-    }).join('');
+    panel.innerHTML = '<div class="col-settings-title">컬럼 순서 및 표시</div>' +
+      order.filter(c => c !== '관리').map(col => {
+        const checked = s[col] !== false ? 'checked' : '';
+        const label = COL_LABELS[col] || col;
+        return `<div class="col-settings-item" draggable="true" data-col="${col}">
+          <span class="col-settings-grip">☰</span>
+          <span class="col-settings-label">${label}</span>
+          <input type="checkbox" ${checked} onchange="onColToggle('${col}', this.checked)" onclick="event.stopPropagation()">
+        </div>`;
+      }).join('') +
+      '<div class="col-settings-reset"><button onclick="resetColOrder()">기본값으로 초기화</button></div>';
+    initColDragAndDrop(panel);
   }
 }
 function onColToggle(col, visible) {
   const s = getColSettings();
   if (visible) delete s[col]; else s[col] = false;
   saveColSettings(s);
-  applyColVisibility();
+  buildHeader();
+  renderTable();
+}
+function resetColOrder() {
+  localStorage.removeItem('col_order');
+  localStorage.removeItem('col_settings');
+  buildHeader();
+  renderTable();
+  const panel = document.getElementById('col-settings-panel');
+  panel.classList.remove('open');
+}
+function initColDragAndDrop(panel) {
+  let dragItem = null;
+  const items = panel.querySelectorAll('.col-settings-item');
+  items.forEach(item => {
+    item.addEventListener('dragstart', (e) => {
+      dragItem = item;
+      item.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      items.forEach(i => { i.classList.remove('drag-over-top', 'drag-over-bottom'); });
+      dragItem = null;
+      // 새 순서 저장
+      const newOrder = [...panel.querySelectorAll('.col-settings-item')].map(i => i.dataset.col);
+      newOrder.push('관리');
+      saveColOrder(newOrder);
+      buildHeader();
+      renderTable();
+    });
+    item.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dragItem || item === dragItem) return;
+      items.forEach(i => { i.classList.remove('drag-over-top', 'drag-over-bottom'); });
+      const rect = item.getBoundingClientRect();
+      const midY = rect.top + rect.height / 2;
+      if (e.clientY < midY) {
+        item.classList.add('drag-over-top');
+        item.parentNode.insertBefore(dragItem, item);
+      } else {
+        item.classList.add('drag-over-bottom');
+        item.parentNode.insertBefore(dragItem, item.nextSibling);
+      }
+    });
+  });
 }
 // 패널 바깥 클릭 시 닫기
 document.addEventListener('click', e => {
