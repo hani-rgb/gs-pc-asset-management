@@ -1,9 +1,9 @@
-import sys, os
+import sys, os, traceback
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
 from flask import Flask, jsonify, request, render_template, session
 import psycopg
 from psycopg.rows import dict_row
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -49,6 +49,15 @@ def execute(conn, query, params=()):
 
 def hash_pw(pw: str) -> str:
     return generate_password_hash(pw)
+
+
+def date_years_ago(years):
+    """N년 전 날짜를 안전하게 계산 (윤년 2/29 → 2/28 보정)"""
+    today = date.today()
+    try:
+        return date(today.year - years, today.month, today.day)
+    except ValueError:
+        return date(today.year - years, today.month, today.day - 1)
 
 
 def init_db():
@@ -146,8 +155,9 @@ def login():
         conn = get_db()
         row = fetchone(conn, 'SELECT id, username, password, role, name FROM users WHERE username = %s', (username,))
         conn.close()
-    except Exception as e:
-        return jsonify({'success': False, 'message': f'DB 오류: {str(e)}'}), 500
+    except Exception:
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': '서버 오류가 발생했습니다.'}), 500
 
     if not row or not check_password_hash(row['password'], password):
         return jsonify({'success': False, 'message': '아이디 또는 비밀번호가 올바르지 않습니다.'}), 401
@@ -176,92 +186,99 @@ def me():
 @login_required
 def get_settings():
     conn = get_db()
-    rows = fetchall(conn, 'SELECT key, value FROM settings')
-    conn.close()
-    return jsonify({r['key']: r['value'] for r in rows})
+    try:
+        rows = fetchall(conn, 'SELECT key, value FROM settings')
+        return jsonify({r['key']: r['value'] for r in rows})
+    finally:
+        conn.close()
 
+
+ALLOWED_SETTINGS = {'replace_years'}
 
 @app.route('/api/settings', methods=['PUT'])
 @admin_required
 def update_settings():
     data = request.json
     conn = get_db()
-    for key, value in data.items():
-        execute(conn, 'INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', (key, value))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    try:
+        for key, value in data.items():
+            if key not in ALLOWED_SETTINGS:
+                continue
+            execute(conn, 'INSERT INTO settings (key, value) VALUES (%s, %s) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value', (key, value))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception:
+        conn.rollback()
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': '설정 저장 실패'}), 500
+    finally:
+        conn.close()
 
+
+ASSET_COLS = 'id, 자산번호, 지급일, 반납일, 부서명, 사번, 이메일, 사용자명, 상태, 기기종류, 제조사, 모델명, 시리얼번호, 사업장, 도입일, 비고, 출처시트, 생성일, 수정일'
 
 # ─── 자산 목록 ───────────────────────────────────────────
 @app.route('/api/assets', methods=['GET'])
 @login_required
 def get_assets():
     conn = get_db()
-    query = 'SELECT * FROM assets WHERE 1=1'
-    params = []
+    try:
+        query = f'SELECT {ASSET_COLS} FROM assets WHERE 1=1'
+        params = []
 
-    search    = request.args.get('search', '')
-    site      = request.args.get('사업장', '')
-    status    = request.args.get('상태', '')
-    old_years = request.args.get('old_years', '')
-    maker     = request.args.get('제조사', '')
-    device    = request.args.get('기기종류', '')
-    dept      = request.args.get('부서명', '')
+        search    = request.args.get('search', '')
+        site      = request.args.get('사업장', '')
+        status    = request.args.get('상태', '')
+        old_years = request.args.get('old_years', '')
+        maker     = request.args.get('제조사', '')
+        device    = request.args.get('기기종류', '')
+        dept      = request.args.get('부서명', '')
 
-    if search:
-        query += ' AND (사용자명 ILIKE %s OR 부서명 ILIKE %s OR 모델명 ILIKE %s OR 시리얼번호 ILIKE %s OR 사번 ILIKE %s OR 이메일 ILIKE %s OR 자산번호 ILIKE %s)'
-        params.extend([f'%{search}%'] * 7)
-    if site:
-        query += ' AND 사업장 = %s'
-        params.append(site)
-    if status:
-        query += ' AND 상태 = %s'
-        params.append(status)
-    if maker:
-        query += ' AND 제조사 = %s'
-        params.append(maker)
-    if device:
-        query += ' AND 기기종류 = %s'
-        params.append(device)
-    if dept:
-        query += ' AND 부서명 = %s'
-        params.append(dept)
-    age_range = request.args.get('age_range', '')
-    if old_years:
-        cutoff = date(date.today().year - int(old_years), date.today().month, date.today().day).isoformat()
-        query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s"
-        params.append(cutoff)
-    elif age_range:
-        today = date.today()
-        if age_range == 'lt1':
-            y1 = date(today.year - 1, today.month, today.day).isoformat()
-            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s"
-            params.append(y1)
-        elif age_range == '1to2':
-            y1 = date(today.year - 1, today.month, today.day).isoformat()
-            y2 = date(today.year - 2, today.month, today.day).isoformat()
-            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
-            params.extend([y2, y1])
-        elif age_range == '2to3':
-            y2 = date(today.year - 2, today.month, today.day).isoformat()
-            y3 = date(today.year - 3, today.month, today.day).isoformat()
-            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
-            params.extend([y3, y2])
-        elif age_range == '3to5':
-            y3 = date(today.year - 3, today.month, today.day).isoformat()
-            y5 = date(today.year - 5, today.month, today.day).isoformat()
-            query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
-            params.extend([y5, y3])
-        elif age_range == 'gt5':
-            y5 = date(today.year - 5, today.month, today.day).isoformat()
+        if search:
+            query += ' AND (사용자명 ILIKE %s OR 부서명 ILIKE %s OR 모델명 ILIKE %s OR 시리얼번호 ILIKE %s OR 사번 ILIKE %s OR 이메일 ILIKE %s OR 자산번호 ILIKE %s)'
+            params.extend([f'%{search}%'] * 7)
+        if site:
+            query += ' AND 사업장 = %s'
+            params.append(site)
+        if status:
+            query += ' AND 상태 = %s'
+            params.append(status)
+        if maker:
+            query += ' AND 제조사 = %s'
+            params.append(maker)
+        if device:
+            query += ' AND 기기종류 = %s'
+            params.append(device)
+        if dept:
+            query += ' AND 부서명 = %s'
+            params.append(dept)
+        age_range = request.args.get('age_range', '')
+        if old_years:
+            cutoff = date_years_ago(int(old_years)).isoformat()
             query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s"
-            params.append(y5)
+            params.append(cutoff)
+        elif age_range:
+            if age_range == 'lt1':
+                query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s"
+                params.append(date_years_ago(1).isoformat())
+            elif age_range == '1to2':
+                query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
+                params.extend([date_years_ago(2).isoformat(), date_years_ago(1).isoformat()])
+            elif age_range == '2to3':
+                query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
+                params.extend([date_years_ago(3).isoformat(), date_years_ago(2).isoformat()])
+            elif age_range == '3to5':
+                query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
+                params.extend([date_years_ago(5).isoformat(), date_years_ago(3).isoformat()])
+            elif age_range == 'gt5':
+                query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s"
+                params.append(date_years_ago(5).isoformat())
 
-    query += ' ORDER BY id DESC'
-    rows = fetchall(conn, query, params)
-    conn.close()
-    return jsonify(rows)
+        query += ' ORDER BY id DESC'
+        rows = fetchall(conn, query, params)
+        return jsonify(rows)
+    finally:
+        conn.close()
 
 
 @app.route('/api/assets', methods=['POST'])
@@ -270,30 +287,38 @@ def create_asset():
     data = request.json
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     conn = get_db()
-    execute(conn, '''
-        INSERT INTO assets
-            (자산번호, 지급일, 반납일, 부서명, 사번, 이메일, 사용자명, 상태, 기기종류,
-             제조사, 모델명, 시리얼번호, 사업장, 도입일, 비고, 출처시트, 생성일, 수정일)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    ''', (
-        data.get('자산번호'), data.get('지급일'), data.get('반납일'),
-        data.get('부서명'), data.get('사번'), data.get('이메일'), data.get('사용자명'),
-        data.get('상태', '사용중'), data.get('기기종류', '노트북'),
-        data.get('제조사'), data.get('모델명'), data.get('시리얼번호'),
-        data.get('사업장'), data.get('도입일'), data.get('비고'), '수동등록', now, now
-    ))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    try:
+        execute(conn, '''
+            INSERT INTO assets
+                (자산번호, 지급일, 반납일, 부서명, 사번, 이메일, 사용자명, 상태, 기기종류,
+                 제조사, 모델명, 시리얼번호, 사업장, 도입일, 비고, 출처시트, 생성일, 수정일)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ''', (
+            data.get('자산번호'), data.get('지급일'), data.get('반납일'),
+            data.get('부서명'), data.get('사번'), data.get('이메일'), data.get('사용자명'),
+            data.get('상태', '사용중'), data.get('기기종류', '노트북'),
+            data.get('제조사'), data.get('모델명'), data.get('시리얼번호'),
+            data.get('사업장'), data.get('도입일'), data.get('비고'), '수동등록', now, now
+        ))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception:
+        conn.rollback()
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': '자산 등록 실패'}), 500
+    finally:
+        conn.close()
 
 
 @app.route('/api/assets/<int:asset_id>', methods=['GET'])
 @login_required
 def get_asset(asset_id):
     conn = get_db()
-    row = fetchone(conn, 'SELECT * FROM assets WHERE id = %s', (asset_id,))
-    conn.close()
-    return jsonify(row) if row else (jsonify({'error': '없음'}), 404)
+    try:
+        row = fetchone(conn, f'SELECT {ASSET_COLS} FROM assets WHERE id = %s', (asset_id,))
+        return jsonify(row) if row else (jsonify({'error': '없음'}), 404)
+    finally:
+        conn.close()
 
 
 @app.route('/api/assets/<int:asset_id>', methods=['PUT'])
@@ -302,21 +327,27 @@ def update_asset(asset_id):
     data = request.json
     now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     conn = get_db()
-    execute(conn, '''
-        UPDATE assets SET
-            자산번호=%s, 지급일=%s, 반납일=%s, 부서명=%s, 사번=%s, 이메일=%s, 사용자명=%s,
-            상태=%s, 기기종류=%s, 제조사=%s, 모델명=%s, 시리얼번호=%s, 사업장=%s, 도입일=%s, 비고=%s, 수정일=%s
-        WHERE id = %s
-    ''', (
-        data.get('자산번호'), data.get('지급일'), data.get('반납일'),
-        data.get('부서명'), data.get('사번'), data.get('이메일'), data.get('사용자명'),
-        data.get('상태'), data.get('기기종류'), data.get('제조사'),
-        data.get('모델명'), data.get('시리얼번호'), data.get('사업장'),
-        data.get('도입일'), data.get('비고'), now, asset_id
-    ))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    try:
+        execute(conn, '''
+            UPDATE assets SET
+                자산번호=%s, 지급일=%s, 반납일=%s, 부서명=%s, 사번=%s, 이메일=%s, 사용자명=%s,
+                상태=%s, 기기종류=%s, 제조사=%s, 모델명=%s, 시리얼번호=%s, 사업장=%s, 도입일=%s, 비고=%s, 수정일=%s
+            WHERE id = %s
+        ''', (
+            data.get('자산번호'), data.get('지급일'), data.get('반납일'),
+            data.get('부서명'), data.get('사번'), data.get('이메일'), data.get('사용자명'),
+            data.get('상태'), data.get('기기종류'), data.get('제조사'),
+            data.get('모델명'), data.get('시리얼번호'), data.get('사업장'),
+            data.get('도입일'), data.get('비고'), now, asset_id
+        ))
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception:
+        conn.rollback()
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': '자산 수정 실패'}), 500
+    finally:
+        conn.close()
 
 
 @app.route('/api/assets/bulk', methods=['POST'])
@@ -387,9 +418,10 @@ def bulk_import():
         conn.commit()
         return jsonify({'success': True, 'inserted': inserted, 'skipped': skipped,
                         'updated': updated, 'total': inserted + skipped + updated})
-    except Exception as e:
+    except Exception:
         conn.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': '업로드 처리 중 오류가 발생했습니다.'}), 500
     finally:
         conn.close()
 
@@ -398,10 +430,12 @@ def bulk_import():
 @admin_required
 def delete_asset(asset_id):
     conn = get_db()
-    execute(conn, 'DELETE FROM assets WHERE id = %s', (asset_id,))
-    conn.commit()
-    conn.close()
-    return jsonify({'success': True})
+    try:
+        execute(conn, 'DELETE FROM assets WHERE id = %s', (asset_id,))
+        conn.commit()
+        return jsonify({'success': True})
+    finally:
+        conn.close()
 
 
 # ─── 필터 메타 ───────────────────────────────────────────
@@ -409,9 +443,11 @@ def delete_asset(asset_id):
 @login_required
 def filter_departments():
     conn = get_db()
-    rows = fetchall(conn, "SELECT DISTINCT 부서명 FROM assets WHERE 부서명 IS NOT NULL AND 부서명 != '' ORDER BY 부서명")
-    conn.close()
-    return jsonify([r['부서명'] for r in rows])
+    try:
+        rows = fetchall(conn, "SELECT DISTINCT 부서명 FROM assets WHERE 부서명 IS NOT NULL AND 부서명 != '' ORDER BY 부서명")
+        return jsonify([r['부서명'] for r in rows])
+    finally:
+        conn.close()
 
 
 @app.route('/api/filters/models')
@@ -419,15 +455,17 @@ def filter_departments():
 def filter_models():
     maker = request.args.get('제조사', '')
     conn = get_db()
-    if maker:
-        rows = fetchall(conn,
-            "SELECT DISTINCT 모델명 FROM assets WHERE 제조사 = %s AND 모델명 IS NOT NULL AND 모델명 != '' ORDER BY 모델명",
-            (maker,))
-    else:
-        rows = fetchall(conn,
-            "SELECT DISTINCT 모델명 FROM assets WHERE 모델명 IS NOT NULL AND 모델명 != '' ORDER BY 모델명")
-    conn.close()
-    return jsonify([r['모델명'] for r in rows])
+    try:
+        if maker:
+            rows = fetchall(conn,
+                "SELECT DISTINCT 모델명 FROM assets WHERE 제조사 = %s AND 모델명 IS NOT NULL AND 모델명 != '' ORDER BY 모델명",
+                (maker,))
+        else:
+            rows = fetchall(conn,
+                "SELECT DISTINCT 모델명 FROM assets WHERE 모델명 IS NOT NULL AND 모델명 != '' ORDER BY 모델명")
+        return jsonify([r['모델명'] for r in rows])
+    finally:
+        conn.close()
 
 
 # ─── 대시보드 ─────────────────────────────────────────────
@@ -435,61 +473,58 @@ def filter_models():
 @login_required
 def dashboard():
     conn = get_db()
-    replace_years = int(fetchone(conn, "SELECT value FROM settings WHERE key='replace_years'")['value'])
-    cutoff = date(date.today().year - replace_years, date.today().month, date.today().day).isoformat()
+    try:
+        row = fetchone(conn, "SELECT value FROM settings WHERE key='replace_years'")
+        replace_years = int(row['value']) if row else 5
+        ry = replace_years
 
-    total     = fetchone(conn, 'SELECT COUNT(*) as cnt FROM assets')['cnt']
-    by_site   = fetchall(conn, 'SELECT 사업장, COUNT(*) as 수량 FROM assets GROUP BY 사업장 ORDER BY 수량 DESC')
-    by_status = fetchall(conn, 'SELECT 상태, COUNT(*) as 수량 FROM assets GROUP BY 상태 ORDER BY 수량 DESC')
-    by_maker  = fetchall(conn, "SELECT COALESCE(NULLIF(제조사,''), '기타') as 제조사, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
-    by_type   = fetchall(conn, "SELECT COALESCE(NULLIF(기기종류,''), '기타') as 기기종류, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
-    # 사용 연한별 분포 — replace_years 기준으로 동적 구간 생성
-    today = date.today()
-    ry = replace_years
-    y1 = date(today.year - 1, today.month, today.day).isoformat()
-    y2 = date(today.year - 2, today.month, today.day).isoformat()
-    y3 = date(today.year - 3, today.month, today.day).isoformat()
-    yr = date(today.year - ry, today.month, today.day).isoformat()
+        total     = fetchone(conn, 'SELECT COUNT(*) as cnt FROM assets')['cnt']
+        by_site   = fetchall(conn, 'SELECT 사업장, COUNT(*) as 수량 FROM assets GROUP BY 사업장 ORDER BY 수량 DESC')
+        by_status = fetchall(conn, 'SELECT 상태, COUNT(*) as 수량 FROM assets GROUP BY 상태 ORDER BY 수량 DESC')
+        by_maker  = fetchall(conn, "SELECT COALESCE(NULLIF(제조사,''), '기타') as 제조사, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
+        by_type   = fetchall(conn, "SELECT COALESCE(NULLIF(기기종류,''), '기타') as 기기종류, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
 
-    # 3년~N년 구간과 N년 이상 구간을 replace_years 기준으로 분리
-    by_age = fetchall(conn, """
-        SELECT
-          CASE
-            WHEN 도입일 IS NULL OR 도입일 = '' THEN '도입일 없음'
-            WHEN 도입일 > %s THEN '1년 미만'
-            WHEN 도입일 > %s THEN '1년~2년'
-            WHEN 도입일 > %s THEN '2년~3년'
-            WHEN 도입일 > %s THEN %s
-            ELSE %s
-          END as 구간,
-          COUNT(*) as 수량
-        FROM assets
-        GROUP BY 1
-    """, (y1, y2, y3, yr,
-          f'3년~{ry}년',
-          f'{ry}년 이상'))
-    # 순서 보장
-    label_mid = f'3년~{ry}년'
-    label_old = f'{ry}년 이상'
-    age_order = ['1년 미만', '1년~2년', '2년~3년', label_mid, label_old, '도입일 없음']
-    age_map = {r['구간']: r['수량'] for r in by_age}
-    by_age_sorted = [{'구간': k, '수량': age_map.get(k, 0)} for k in age_order if age_map.get(k, 0) > 0]
+        y1 = date_years_ago(1).isoformat()
+        y2 = date_years_ago(2).isoformat()
+        y3 = date_years_ago(3).isoformat()
+        yr = date_years_ago(ry).isoformat()
 
-    # old_count = "N년 이상" 구간 수량 (동일 데이터 소스)
-    old_count = age_map.get(label_old, 0)
+        by_age = fetchall(conn, """
+            SELECT
+              CASE
+                WHEN 도입일 IS NULL OR 도입일 = '' THEN '도입일 없음'
+                WHEN 도입일 > %s THEN '1년 미만'
+                WHEN 도입일 > %s THEN '1년~2년'
+                WHEN 도입일 > %s THEN '2년~3년'
+                WHEN 도입일 > %s THEN %s
+                ELSE %s
+              END as 구간,
+              COUNT(*) as 수량
+            FROM assets
+            GROUP BY 1
+        """, (y1, y2, y3, yr,
+              f'3년~{ry}년',
+              f'{ry}년 이상'))
 
-    conn.close()
+        label_mid = f'3년~{ry}년'
+        label_old = f'{ry}년 이상'
+        age_order = ['1년 미만', '1년~2년', '2년~3년', label_mid, label_old, '도입일 없음']
+        age_map = {r['구간']: r['수량'] for r in by_age}
+        by_age_sorted = [{'구간': k, '수량': age_map.get(k, 0)} for k in age_order if age_map.get(k, 0) > 0]
+        old_count = age_map.get(label_old, 0)
 
-    return jsonify({
-        'total': total,
-        'by_site': by_site,
-        'by_status': by_status,
-        'by_maker': by_maker,
-        'by_type':  by_type,
-        'by_age': by_age_sorted,
-        'old_count': old_count,
-        'replace_years': replace_years,
-    })
+        return jsonify({
+            'total': total,
+            'by_site': by_site,
+            'by_status': by_status,
+            'by_maker': by_maker,
+            'by_type':  by_type,
+            'by_age': by_age_sorted,
+            'old_count': old_count,
+            'replace_years': replace_years,
+        })
+    finally:
+        conn.close()
 
 
 @app.route('/')
