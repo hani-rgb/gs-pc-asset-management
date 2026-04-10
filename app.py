@@ -3,7 +3,12 @@
 # - 모듈 임포트, .env 파일 로드, Flask 앱 생성
 # ============================================
 import sys, os, traceback
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'vendor'))
+# Vercel 배포 환경: vendor 디렉토리의 psycopg 사용 (psycopg-binary 설치 불가)
+# 로컬 개발 환경: venv의 psycopg-binary 사용 (SKIP_VENDOR=1 설정 시 또는 이미 설치된 경우)
+if not os.environ.get('SKIP_VENDOR'):
+    vendor_path = os.path.join(os.path.dirname(__file__), 'vendor')
+    if os.path.exists(vendor_path):
+        sys.path.insert(0, vendor_path)
 from flask import Flask, jsonify, request, render_template, session
 import psycopg
 from psycopg.rows import dict_row
@@ -74,6 +79,17 @@ def date_years_ago(years):
         return date(today.year - years, today.month, today.day)
     except ValueError:
         return date(today.year - years, today.month, today.day - 1)
+
+
+def date_months_ago(months):
+    """N개월 전 날짜를 안전하게 계산"""
+    today = date.today()
+    m = today.month - months
+    y = today.year + (m - 1) // 12
+    m = (m - 1) % 12 + 1
+    import calendar
+    max_day = calendar.monthrange(y, m)[1]
+    return date(y, m, min(today.day, max_day))
 
 
 # ============================================
@@ -227,7 +243,7 @@ def get_settings():
 
 
 # 수정 가능한 설정 키 화이트리스트
-ALLOWED_SETTINGS = {'replace_years'}
+ALLOWED_SETTINGS = {'replace_years', 'replace_months'}
 
 @app.route('/api/settings', methods=['PUT'])
 @admin_required
@@ -302,13 +318,23 @@ def get_assets():
         age_range = request.args.get('age_range', '')
 
         if old_years:
-            cutoff = date_years_ago(int(old_years)).isoformat()
+            # old_years는 개월수로 전달됨
+            cutoff = date_months_ago(int(old_years)).isoformat()
             query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 <= %s"
             params.append(cutoff)
         elif age_range:
             if age_range == 'lt1':
                 query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s"
                 params.append(date_years_ago(1).isoformat())
+            elif 'y' in age_range and 'm' in age_range:
+                # "NyMm" 형식 파싱 (예: 4y6m → 4년~4년6개월)
+                import re
+                match = re.match(r'(\d+)y(\d+)m', age_range)
+                if match:
+                    y, m = int(match.group(1)), int(match.group(2))
+                    total_m = y * 12 + m
+                    query += " AND 도입일 IS NOT NULL AND 도입일 != '' AND 도입일 > %s AND 도입일 <= %s"
+                    params.extend([date_months_ago(total_m).isoformat(), date_years_ago(y).isoformat()])
             elif 'to' in age_range:
                 # "NtoM" 형식 파싱 (예: 1to2, 3to4)
                 parts = age_range.split('to')
@@ -549,10 +575,15 @@ def dashboard():
     """대시보드 통계 데이터 일괄 반환 — 사업장별, 상태별, 제조사별, 기기종류별, 연식별 집계."""
     conn = get_db()
     try:
-        # 설정에서 교체 주기(년) 조회
-        row = fetchone(conn, "SELECT value FROM settings WHERE key='replace_years'")
-        replace_years = int(row['value']) if row else 5
-        ry = replace_years
+        # 설정에서 교체 주기 조회 (개월 우선, 없으면 연 단위 호환)
+        row_m = fetchone(conn, "SELECT value FROM settings WHERE key='replace_months'")
+        if row_m:
+            replace_months = int(row_m['value'])
+        else:
+            row_y = fetchone(conn, "SELECT value FROM settings WHERE key='replace_years'")
+            replace_months = int(row_y['value']) * 12 if row_y else 60
+        ry = replace_months // 12  # 1년 단위 구간용 (정수 년)
+        replace_years = replace_months  # 프론트엔드에 개월수 전달
 
         total     = fetchone(conn, 'SELECT COUNT(*) as cnt FROM assets')['cnt']
         by_site   = fetchall(conn, 'SELECT 사업장, COUNT(*) as 수량 FROM assets GROUP BY 사업장 ORDER BY 수량 DESC')
@@ -560,18 +591,34 @@ def dashboard():
         by_maker  = fetchall(conn, "SELECT COALESCE(NULLIF(제조사,''), '기타') as 제조사, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
         by_type   = fetchall(conn, "SELECT COALESCE(NULLIF(기기종류,''), '기타') as 기기종류, COUNT(*) as 수량 FROM assets GROUP BY 1 ORDER BY 수량 DESC")
 
-        # 연식 구간: 1년 단위로 동적 생성 (1년미만 / 1~2년 / ... / N년이상 / 도입일없음)
-        # CASE WHEN 절을 교체 기준(ry)에 따라 동적으로 조립
+        # 연식 구간: 1년 단위로 동적 생성 + 교체 기준(개월)으로 경고 구간 분리
         case_parts = ["WHEN 도입일 IS NULL OR 도입일 = '' THEN '도입일 없음'"]
         case_params = []
+        extra_months = replace_months % 12
+
+        # 1년 단위 구간 생성
         for i in range(ry):
             boundary = date_years_ago(i + 1).isoformat()
             if i == 0:
                 case_parts.append(f"WHEN 도입일 > %s THEN '1년 미만'")
             else:
-                case_parts.append(f"WHEN 도입일 > %s THEN '{i}년~{i+1}년'")
+                case_parts.append(f"WHEN 도입일 > %s THEN '{i}년 이상 ~ {i+1}년 미만'")
             case_params.append(boundary)
+
+        # 나머지 개월이 있으면 중간 구간 추가 (예: 4년 이상 ~ 4년 6개월 미만)
+        if extra_months > 0:
+            cutoff = date_months_ago(replace_months).isoformat()
+            mid_label = f'{ry}년 이상 ~ {ry}년 {extra_months}개월 미만'
+            case_parts.append(f"WHEN 도입일 > %s THEN '{mid_label}'")
+            case_params.append(cutoff)
+
         case_sql = '\n                    '.join(case_parts)
+
+        # 교체 기준 라벨 생성
+        if extra_months == 0:
+            old_label = f'{ry}년 이상'
+        else:
+            old_label = f'{ry}년 {extra_months}개월 이상' if ry > 0 else f'{extra_months}개월 이상'
 
         by_age = fetchall(conn, f"""
             SELECT
@@ -582,17 +629,18 @@ def dashboard():
               COUNT(*) as 수량
             FROM assets
             GROUP BY 1
-        """, (*case_params, f'{ry}년 이상'))
+        """, (*case_params, old_label))
 
         # 프론트엔드 차트에 표시할 순서대로 정렬
-        label_old = f'{ry}년 이상'
         age_order = ['1년 미만']
         for i in range(1, ry):
-            age_order.append(f'{i}년~{i+1}년')
-        age_order.extend([label_old, '도입일 없음'])
+            age_order.append(f'{i}년 이상 ~ {i+1}년 미만')
+        if extra_months > 0:
+            age_order.append(mid_label)
+        age_order.extend([old_label, '도입일 없음'])
         age_map = {r['구간']: r['수량'] for r in by_age}
         by_age_sorted = [{'구간': k, '수량': age_map.get(k, 0)} for k in age_order if age_map.get(k, 0) > 0]
-        old_count = age_map.get(label_old, 0)
+        old_count = age_map.get(old_label, 0)
 
         return jsonify({
             'total': total,
@@ -602,7 +650,7 @@ def dashboard():
             'by_type':  by_type,
             'by_age': by_age_sorted,
             'old_count': old_count,
-            'replace_years': replace_years,
+            'replace_months': replace_months,
         })
     finally:
         conn.close()
@@ -622,6 +670,6 @@ if __name__ == '__main__':
     init_db()
     print('=' * 50)
     print('  PC 자산관리 시스템 시작')
-    print('  http://localhost:5000')
+    print('  http://localhost:5001')
     print('=' * 50)
-    app.run(debug=False, port=5000)
+    app.run(debug=False, port=5001)

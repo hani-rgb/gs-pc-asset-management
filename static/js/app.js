@@ -11,7 +11,8 @@ let currentAssets = [];
 let editingId = null;
 let detailId = null;
 let searchTimer = null;
-let replaceYears = 5;
+let replaceMonths = 60;  // 교체 기준 (개월)
+let replaceYears = 5;   // 교체 기준 (정수 년, 표시용)
 let sortKey = null;
 let sortDir = 1; // 1=오름차순, -1=내림차순
 let currentRole = null; // 'admin' | 'user' | null
@@ -160,28 +161,37 @@ async function loadDashboard() {
   let data;
   try { data = await authFetch('/api/dashboard').then(r => r.json()); }
   catch { return; }
-  replaceYears = data.replace_years;
+  replaceMonths = data.replace_months;
+  replaceYears = Math.floor(replaceMonths / 12);
+  const extraMonths = replaceMonths % 12;
+  const replaceLabel = extraMonths === 0 ? `${replaceYears}년` : (replaceYears > 0 ? `${replaceYears}년 ${extraMonths}개월` : `${extraMonths}개월`);
+
   document.getElementById('years-input').value = replaceYears;
-  document.getElementById('years-display').textContent = replaceYears;
+  document.getElementById('months-input').value = extraMonths;
+  document.getElementById('years-display').textContent = replaceLabel;
   const badge = document.getElementById('years-badge');
-  if (badge) badge.textContent = `${replaceYears}년`;
+  if (badge) badge.textContent = replaceLabel;
 
   // 연수 필터 옵션을 교체 기준에 따라 동적 생성
   const oldSel = document.getElementById('filter-old');
   const curVal = oldSel.value;
-  oldSel.innerHTML = '<option value="">전체 (연수 무관)</option>' +
+  let ageOpts = '<option value="">전체 (연수 무관)</option>' +
     '<option value="lt1">1년 미만</option>' +
-    Array.from({length: replaceYears - 1}, (_, i) =>
-      `<option value="${i+1}to${i+2}">${i+1}년 ~ ${i+2}년</option>`
-    ).join('') +
-    `<option value="old">교체 검토 대상 (${replaceYears}년+)</option>`;
+    Array.from({length: Math.max(replaceYears - 1, 0)}, (_, i) =>
+      `<option value="${i+1}to${i+2}">${i+1}년 이상 ~ ${i+2}년 미만</option>`
+    ).join('');
+  if (extraMonths > 0) {
+    ageOpts += `<option value="${replaceYears}y${extraMonths}m">${replaceYears}년 이상 ~ ${replaceLabel} 미만</option>`;
+  }
+  ageOpts += `<option value="old">교체 검토 대상 (${replaceLabel}+)</option>`;
+  oldSel.innerHTML = ageOpts;
   oldSel.value = curVal;
 
   const unit = n => `${n.toLocaleString()}<span class="card-unit">대</span>`;
   document.getElementById('d-total').innerHTML = unit(data.total);
   // old_count는 by_age의 "N년 이상" 구간과 동일 데이터 소스
   document.getElementById('d-old').innerHTML   = unit(data.old_count);
-  document.getElementById('d-old-sub').textContent = `교체 검토 (${replaceYears}년+)`;
+  document.getElementById('d-old-sub').textContent = `교체 검토 (${replaceLabel}+)`;
 
   const using = (data.by_status.find(s => s['상태'] === '사용중') || {})['수량'] || 0;
   const loan  = (data.by_status.find(s => s['상태'] === '대여중') || {})['수량'] || 0;
@@ -417,8 +427,15 @@ function renderAgeDonut(elId, rows, total) {
   }).join('');
 
   const ageRangeMap = { '1년 미만': 'lt1' };
+  const _extraM = replaceMonths % 12;
   for (let i = 1; i < replaceYears; i++) {
-    ageRangeMap[`${i}년~${i+1}년`] = `${i}to${i+1}`;
+    ageRangeMap[`${i}년 이상 ~ ${i+1}년 미만`] = `${i}to${i+1}`;
+  }
+  if (_extraM > 0) {
+    const _midLabel = replaceYears > 0
+      ? `${replaceYears}년 이상 ~ ${replaceYears}년 ${_extraM}개월 미만`
+      : `${_extraM}개월 미만`;
+    ageRangeMap[_midLabel] = `${replaceYears}y${_extraM}m`;
   }
   ageRangeMap[warnLabel] = 'old';
 
@@ -462,21 +479,24 @@ function closeSettingsModal() {
   document.getElementById('settings-modal').classList.remove('open');
 }
 
-// 교체 기준 연수 저장 후 대시보드 새로고침
-async function saveYears() {
-  const val = parseInt(document.getElementById('years-input').value);
-  if (!val || val < 1 || val > 20) { alert('1~20 사이의 연수를 입력하세요.'); return; }
+// 교체 기준 저장 후 대시보드 새로고침
+async function saveReplaceMonths() {
+  const y = parseInt(document.getElementById('years-input').value) || 0;
+  const m = parseInt(document.getElementById('months-input').value) || 0;
+  const totalMonths = y * 12 + m;
+  if (totalMonths < 1 || totalMonths > 240) { alert('1개월 ~ 20년 사이로 입력하세요.'); return; }
   await fetch('/api/settings', {
     method: 'PUT',
     headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({replace_years: String(val)})
+    body: JSON.stringify({replace_months: String(totalMonths)})
   });
-  replaceYears = val;
-  const badge = document.getElementById('years-badge');
-  if (badge) badge.textContent = `${val}년`;
+  replaceMonths = totalMonths;
+  replaceYears = Math.floor(totalMonths / 12);
+  const extra = totalMonths % 12;
+  const label = extra === 0 ? `${replaceYears}년` : (replaceYears > 0 ? `${replaceYears}년 ${extra}개월` : `${extra}개월`);
   loadDashboard();
   closeSettingsModal();
-  showToast(`교체 기준이 ${val}년으로 변경되었습니다.`);
+  showToast(`교체 기준이 ${label}(으)로 변경되었습니다.`);
 }
 
 
@@ -534,7 +554,7 @@ async function loadAssets() {
   if (maker)  params.set('제조사', maker);
   if (device) params.set('기기종류', device);
   if (dept)   params.set('부서명', dept);
-  if (old === 'old') params.set('old_years', replaceYears);
+  if (old === 'old') params.set('old_years', replaceMonths);
   else if (old) params.set('age_range', old);
 
   document.getElementById('asset-tbody').innerHTML =
@@ -567,7 +587,11 @@ function renderFilterTags() {
     { id: 'filter-old',    label: v => {
       if (v === 'lt1') return '1년 미만';
       if (v === 'old') return '교체 검토 대상';
-      if (v.includes('to')) { const p = v.split('to'); return `${p[0]}년~${p[1]}년`; }
+      if (v.includes('y') && v.includes('m')) {
+        const m = v.match(/(\d+)y(\d+)m/);
+        if (m) return `${m[1]}년 이상 ~ ${m[1]}년 ${m[2]}개월 미만`;
+      }
+      if (v.includes('to')) { const p = v.split('to'); return `${p[0]}년 이상 ~ ${p[1]}년 미만`; }
       return v;
     }},
   ];
@@ -647,8 +671,9 @@ function renderRow(a) {
   const badge = `<span class="badge badge-${a['상태'] || 'default'}">${a['상태'] || '-'}</span>`;
   const yrs = calcYears(a['도입일']);
   const yrsText = formatYears(yrs);
-  const isOld = yrs !== null && yrs >= replaceYears;
-  const oldBadge = isOld ? `<span class="old-badge">${replaceYears}년+</span>` : '';
+  const isOld = yrs !== null && yrs * 12 >= replaceMonths;
+  const _rl = replaceMonths % 12 === 0 ? `${replaceYears}년` : `${replaceYears}년${replaceMonths%12}개월`;
+  const oldBadge = isOld ? `<span class="old-badge">${_rl}+</span>` : '';
   const assetNo = a['자산번호']
     ? `<span style="font-size:12px;color:#888">${a['자산번호']}</span>`
     : `<span style="font-size:12px;color:#c0c8d8">미등록</span>`;
@@ -1464,7 +1489,7 @@ async function showDetail(id) {
   detailId = id;
   const a = await fetch(`/api/assets/${id}`).then(r => r.json());
   const yrs = calcYears(a['도입일']);
-  const yrsText = yrs !== null ? `${yrs.toFixed(1)}년` + (yrs >= replaceYears ? ' ⚠️ 교체 검토 대상' : '') : '-';
+  const yrsText = yrs !== null ? `${yrs.toFixed(1)}년` + (yrs * 12 >= replaceMonths ? ' ⚠️ 교체 검토 대상' : '') : '-';
   const item = (label, key) => `<div class="detail-item">
     <div class="detail-item-label">${label}</div>
     <div class="detail-item-value">${a[key] || '-'}</div>
