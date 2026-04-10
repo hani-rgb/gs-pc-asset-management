@@ -217,6 +217,33 @@ def logout():
     return jsonify({'success': True})
 
 
+@app.route('/api/auth/change_password', methods=['POST'])
+@login_required
+def change_password():
+    """POST 비밀번호 변경 — 현재 비밀번호 확인 후 새 비밀번호로 업데이트."""
+    data = request.json or {}
+    current_pw = (data.get('current_password') or '').strip()
+    new_pw     = (data.get('new_password') or '').strip()
+    if not current_pw or not new_pw:
+        return jsonify({'success': False, 'message': '모든 항목을 입력하세요.'}), 400
+    if len(new_pw) < 6:
+        return jsonify({'success': False, 'message': '새 비밀번호는 6자 이상이어야 합니다.'}), 400
+    try:
+        conn = get_db()
+        username = current_user()['username']
+        row = fetchone(conn, 'SELECT password FROM users WHERE username = %s', (username,))
+        if not row or not check_password_hash(row['password'], current_pw):
+            conn.close()
+            return jsonify({'success': False, 'message': '현재 비밀번호가 올바르지 않습니다.'}), 401
+        execute(conn, 'UPDATE users SET password = %s WHERE username = %s',
+                (hash_pw(new_pw), username))
+        conn.close()
+    except Exception:
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': '서버 오류가 발생했습니다.'}), 500
+    return jsonify({'success': True})
+
+
 @app.route('/api/auth/me', methods=['GET'])
 def me():
     """현재 로그인 상태 및 사용자 정보 반환."""

@@ -52,7 +52,7 @@
   </div>
   <div class="nav-right" style="display:flex;align-items:center;gap:14px;flex-shrink:0;margin-left:16px">
     <span id="nav-date" style="font-size:13px;color:rgba(255,255,255,0.45)"></span>
-    <span id="nav-user" style="display:none;font-size:13px;color:rgba(255,255,255,0.75);font-weight:500"></span>
+    <span id="nav-user" style="display:none;font-size:13px;color:rgba(255,255,255,0.75);font-weight:500;cursor:pointer;text-decoration:underline;text-underline-offset:3px" onclick="openChangePwModal()" title="비밀번호 변경"></span>
     <button id="logout-btn" class="btn-logout" style="display:none" onclick="doLogout()">로그아웃</button>
   </div>
 </nav>
@@ -271,6 +271,41 @@
       </div>
       <div style="font-size:12px;color:#b0b8c8;margin-bottom:20px">※ 변경 즉시 대시보드와 목록 필터에 반영됩니다</div>
       <button class="btn btn-navy btn-sm" style="width:100%;padding:10px" onclick="closeSettingsModal();goAssetList('연수','old')">교체 검토 대상 목록 보기 →</button>
+    </div>
+  </div>
+</div>
+
+<!-- 비밀번호 변경 모달 -->
+<div class="modal-overlay" id="change-pw-modal">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-header">
+      <div class="modal-title">비밀번호 변경</div>
+      <button class="modal-close" onclick="closeModal('change-pw-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="login-field" style="margin-bottom:14px">
+        <label style="display:block;font-size:13px;font-weight:600;color:#4b5563;margin-bottom:6px">현재 비밀번호</label>
+        <input type="password" id="cpw-current" placeholder="현재 비밀번호 입력"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px"
+               onkeydown="if(event.key==='Enter')document.getElementById('cpw-new').focus()">
+      </div>
+      <div class="login-field" style="margin-bottom:14px">
+        <label style="display:block;font-size:13px;font-weight:600;color:#4b5563;margin-bottom:6px">새 비밀번호</label>
+        <input type="password" id="cpw-new" placeholder="새 비밀번호 입력 (6자 이상)"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px"
+               onkeydown="if(event.key==='Enter')document.getElementById('cpw-confirm').focus()">
+      </div>
+      <div class="login-field" style="margin-bottom:4px">
+        <label style="display:block;font-size:13px;font-weight:600;color:#4b5563;margin-bottom:6px">새 비밀번호 확인</label>
+        <input type="password" id="cpw-confirm" placeholder="새 비밀번호 재입력"
+               style="width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px"
+               onkeydown="if(event.key==='Enter')doChangePassword()">
+      </div>
+      <div id="cpw-error" style="font-size:13px;color:#ef4444;margin-top:8px;min-height:18px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('change-pw-modal')">취소</button>
+      <button class="btn btn-primary" onclick="doChangePassword()">변경</button>
     </div>
   </div>
 </div>

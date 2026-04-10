@@ -97,6 +97,42 @@ async function doLogin() {
   }
 }
 
+// 비밀번호 변경 모달 열기
+function openChangePwModal() {
+  document.getElementById('cpw-current').value = '';
+  document.getElementById('cpw-new').value = '';
+  document.getElementById('cpw-confirm').value = '';
+  document.getElementById('cpw-error').textContent = '';
+  openModal('change-pw-modal');
+  setTimeout(() => document.getElementById('cpw-current').focus(), 100);
+}
+
+// 비밀번호 변경 처리
+async function doChangePassword() {
+  const current  = document.getElementById('cpw-current').value;
+  const newPw    = document.getElementById('cpw-new').value;
+  const confirm  = document.getElementById('cpw-confirm').value;
+  const errEl    = document.getElementById('cpw-error');
+  errEl.textContent = '';
+
+  if (!current || !newPw || !confirm) { errEl.textContent = '모든 항목을 입력하세요.'; return; }
+  if (newPw.length < 6) { errEl.textContent = '새 비밀번호는 6자 이상이어야 합니다.'; return; }
+  if (newPw !== confirm) { errEl.textContent = '새 비밀번호가 일치하지 않습니다.'; return; }
+
+  const res = await fetch('/api/auth/change_password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ current_password: current, new_password: newPw }),
+  });
+  const data = await res.json();
+  if (data.success) {
+    closeModal('change-pw-modal');
+    alert('비밀번호가 변경되었습니다.');
+  } else {
+    errEl.textContent = data.message || '변경에 실패했습니다.';
+  }
+}
+
 // 로그아웃 처리 및 상태 초기화
 async function doLogout() {
   await fetch('/api/auth/logout', { method: 'POST' });
