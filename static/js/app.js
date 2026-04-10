@@ -59,6 +59,7 @@ function showApp(name, role) {
   navUser.style.display = '';
   logoutBtn.style.display = '';
   applyRoleUI();
+  initMultiSelectFilters();
   loadDeptFilter();
   loadMakerFilter();
   loadDashboard();
@@ -244,18 +245,12 @@ async function loadDashboard() {
 function goAssetList(filterType, filterValue) {
   // 필터 초기화 후 지정된 필터만 설정
   document.getElementById('search-input').value = '';
-  ['filter-site','filter-status','filter-maker','filter-device','filter-dept','filter-old']
-    .forEach(id => { document.getElementById(id).value = ''; });
-  if (filterType === '상태') {
-    document.getElementById('filter-status').value = filterValue;
-  } else if (filterType === '연수') {
+  Object.keys(msFilterState).forEach(k => { msFilterState[k] = new Set(); });
+  document.getElementById('filter-old').value = '';
+  if (filterType === '연수') {
     document.getElementById('filter-old').value = filterValue;
-  } else if (filterType === '사업장') {
-    document.getElementById('filter-site').value = filterValue;
-  } else if (filterType === '제조사') {
-    document.getElementById('filter-maker').value = filterValue;
-  } else if (filterType === '기기종류') {
-    document.getElementById('filter-device').value = filterValue;
+  } else if (msFilterState[filterType]) {
+    msFilterState[filterType].add(filterValue);
   }
   showPage('assets');
 }
@@ -574,23 +569,99 @@ function formatYears(yrs) {
   return `${y}년 ${m}개월`;
 }
 
+/* ===== 멀티 셀렉트 필터 상태 ===== */
+const MS_FILTER_KEYS = ['사업장', '상태', '제조사', '기기종류', '부서명'];
+const MS_FILTER_LABELS = { '사업장': '사업장', '상태': '상태', '제조사': '제조사', '기기종류': '기기종류', '부서명': '부서' };
+const msFilterState = { '사업장': new Set(), '상태': new Set(), '제조사': new Set(), '기기종류': new Set(), '부서명': new Set() };
+const msFilterOptions = {
+  '사업장': ['GS에너지', 'GS파워', '인천종합에너지'],
+  '상태': ['사용중', '대여중', '재고', '반납', '폐기'],
+  '기기종류': ['노트북', '데스크톱', 'Mac'],
+  '제조사': [],
+  '부서명': [],
+};
+
+// 멀티 셀렉트 필터 컴포넌트 초기화 (페이지 로드 시 1회)
+function initMultiSelectFilters() {
+  document.querySelectorAll('.ms-filter').forEach(el => {
+    const key = el.dataset.key;
+    el.innerHTML = `<button type="button" class="ms-btn" id="ms-btn-${key}">${MS_FILTER_LABELS[key]}</button>
+      <div class="ms-panel" id="ms-panel-${key}"></div>`;
+    el.querySelector('.ms-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleMsPanel(key);
+    });
+    updateMsButton(key);
+  });
+  // 외부 클릭 시 패널 닫기
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.ms-filter')) {
+      document.querySelectorAll('.ms-panel.open').forEach(p => p.classList.remove('open'));
+    }
+  });
+}
+
+function toggleMsPanel(key) {
+  const panel = document.getElementById(`ms-panel-${key}`);
+  const isOpen = panel.classList.contains('open');
+  document.querySelectorAll('.ms-panel.open').forEach(p => p.classList.remove('open'));
+  if (isOpen) return;
+  renderMsPanel(key);
+  panel.classList.add('open');
+}
+
+function renderMsPanel(key) {
+  const panel = document.getElementById(`ms-panel-${key}`);
+  const opts = msFilterOptions[key] || [];
+  const selected = msFilterState[key];
+  const optsHtml = opts.length
+    ? opts.map(o => `<label class="ms-opt">
+        <input type="checkbox" value="${o.replace(/"/g, '&quot;')}" ${selected.has(o) ? 'checked' : ''}>
+        <span>${o}</span>
+      </label>`).join('')
+    : '<div class="ms-opt empty">옵션 없음</div>';
+  panel.innerHTML = optsHtml + `<div class="ms-panel-actions">
+    <button type="button" data-act="clear">선택 해제</button>
+    <button type="button" data-act="close">닫기</button>
+  </div>`;
+  panel.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) selected.add(cb.value);
+      else selected.delete(cb.value);
+      updateMsButton(key);
+      loadAssets();
+    });
+  });
+  panel.querySelector('[data-act="clear"]').addEventListener('click', () => {
+    msFilterState[key] = new Set();
+    renderMsPanel(key);
+    updateMsButton(key);
+    loadAssets();
+  });
+  panel.querySelector('[data-act="close"]').addEventListener('click', () => {
+    panel.classList.remove('open');
+  });
+}
+
+function updateMsButton(key) {
+  const btn = document.getElementById(`ms-btn-${key}`);
+  if (!btn) return;
+  const count = msFilterState[key].size;
+  const label = MS_FILTER_LABELS[key];
+  btn.textContent = count > 0 ? `${label} (${count})` : label;
+  btn.classList.toggle('has-selection', count > 0);
+}
+
 // 필터 조건 조합 후 API 호출, 결과를 currentAssets에 저장
 async function loadAssets() {
   const params = new URLSearchParams();
-  const s      = document.getElementById('search-input').value;
-  const site   = document.getElementById('filter-site').value;
-  const status = document.getElementById('filter-status').value;
-  const maker  = document.getElementById('filter-maker').value;
-  const device = document.getElementById('filter-device').value;
-  const dept   = document.getElementById('filter-dept').value;
-  const old    = document.getElementById('filter-old').value;
+  const s   = document.getElementById('search-input').value;
+  const old = document.getElementById('filter-old').value;
 
-  if (s)      params.set('search', s);
-  if (site)   params.set('사업장', site);
-  if (status) params.set('상태', status);
-  if (maker)  params.set('제조사', maker);
-  if (device) params.set('기기종류', device);
-  if (dept)   params.set('부서명', dept);
+  if (s) params.set('search', s);
+  MS_FILTER_KEYS.forEach(key => {
+    msFilterState[key].forEach(v => params.append(key, v));
+  });
   if (old === 'old') params.set('old_years', replaceMonths);
   else if (old) params.set('age_range', old);
 
@@ -607,74 +678,86 @@ async function loadAssets() {
 // 모든 필터 및 검색어 초기화 후 자산 재로드
 function resetFilters() {
   document.getElementById('search-input').value = '';
-  ['filter-site','filter-status','filter-maker','filter-device','filter-dept','filter-old']
-    .forEach(id => { document.getElementById(id).value = ''; });
+  MS_FILTER_KEYS.forEach(key => {
+    msFilterState[key] = new Set();
+    updateMsButton(key);
+  });
+  document.getElementById('filter-old').value = '';
   loadAssets();
 }
 
 // 활성 필터를 태그 형태로 렌더링 (클릭 시 해당 필터 해제)
 function renderFilterTags() {
-  const TAG_DEFS = [
-    { id: 'search-input',  label: v => `"${v}"`,         isSearch: true },
-    { id: 'filter-site',   label: v => v },
-    { id: 'filter-status', label: v => v },
-    { id: 'filter-maker',  label: v => v },
-    { id: 'filter-device', label: v => v },
-    { id: 'filter-dept',   label: v => v },
-    { id: 'filter-old',    label: v => {
-      if (v === 'lt1') return '1년 미만';
-      if (v === 'old') return '교체 검토 대상';
-      if (v.includes('y') && v.includes('m')) {
-        const m = v.match(/(\d+)y(\d+)m/);
-        if (m) return `${m[1]}년 이상 ~ ${m[1]}년 ${m[2]}개월 미만`;
-      }
-      if (v.includes('to')) { const p = v.split('to'); return `${p[0]}년 이상 ~ ${p[1]}년 미만`; }
-      return v;
-    }},
-  ];
   const container = document.getElementById('filter-tags');
   container.innerHTML = '';
-  TAG_DEFS.forEach(def => {
-    const el = document.getElementById(def.id);
-    const v = el ? el.value.trim() : '';
-    if (!v) return;
+
+  const addTag = (text, onRemove) => {
     const tag = document.createElement('span');
     tag.className = 'filter-tag';
-    tag.innerHTML = `${def.label(v)} <button class="filter-tag-x" title="필터 해제">×</button>`;
-    tag.querySelector('.filter-tag-x').addEventListener('click', () => {
-      if (def.isSearch) el.value = '';
-      else el.value = '';
-      loadAssets();
-    });
+    tag.innerHTML = `${text} <button class="filter-tag-x" title="필터 해제">×</button>`;
+    tag.querySelector('.filter-tag-x').addEventListener('click', onRemove);
     container.appendChild(tag);
+  };
+
+  // 검색어 태그
+  const searchEl = document.getElementById('search-input');
+  if (searchEl.value.trim()) {
+    addTag(`"${searchEl.value.trim()}"`, () => { searchEl.value = ''; loadAssets(); });
+  }
+
+  // 멀티 셀렉트 태그
+  MS_FILTER_KEYS.forEach(key => {
+    const label = MS_FILTER_LABELS[key];
+    msFilterState[key].forEach(v => {
+      addTag(`${label}: ${v}`, () => {
+        msFilterState[key].delete(v);
+        updateMsButton(key);
+        loadAssets();
+      });
+    });
   });
+
+  // 연수 필터 태그
+  const oldEl = document.getElementById('filter-old');
+  const ov = oldEl.value.trim();
+  if (ov) {
+    let txt = ov;
+    if (ov === 'lt1') txt = '1년 미만';
+    else if (ov === 'old') txt = '교체 검토 대상';
+    else if (ov.includes('y') && ov.includes('m')) {
+      const m = ov.match(/(\d+)y(\d+)m/);
+      if (m) txt = `${m[1]}년 이상 ~ ${m[1]}년 ${m[2]}개월 미만`;
+    } else if (ov.includes('to')) {
+      const p = ov.split('to');
+      txt = `${p[0]}년 이상 ~ ${p[1]}년 미만`;
+    }
+    addTag(txt, () => { oldEl.value = ''; loadAssets(); });
+  }
+
+  // "전체 해제" 버튼 (태그가 하나라도 있으면 표시)
+  if (container.children.length > 0) {
+    const clearBtn = document.createElement('button');
+    clearBtn.className = 'filter-tag';
+    clearBtn.style.cssText = 'background:#1D1D1F;color:#fff;border-color:#1D1D1F;cursor:pointer;font-family:inherit';
+    clearBtn.textContent = '전체 해제';
+    clearBtn.addEventListener('click', resetFilters);
+    container.appendChild(clearBtn);
+  }
 }
 
-// 부서 드롭다운 옵션 동적 로드 (중복 방지: 첫 번째 "전체" 옵션 제외하고 초기화 후 추가)
+// 부서 옵션 동적 로드
 async function loadDeptFilter() {
   try {
     const depts = await authFetch('/api/filters/departments').then(r => r.json());
-    const sel = document.getElementById('filter-dept');
-    while (sel.options.length > 1) sel.remove(1);
-    depts.forEach(d => {
-      const opt = document.createElement('option');
-      opt.value = d; opt.textContent = d;
-      sel.appendChild(opt);
-    });
+    msFilterOptions['부서명'] = depts;
   } catch {}
 }
 
-// 제조사 드롭다운 옵션 동적 로드 (중복 방지: 첫 번째 "전체" 옵션 제외하고 초기화 후 추가)
+// 제조사 옵션 동적 로드
 async function loadMakerFilter() {
   try {
     const makers = await authFetch('/api/filters/makers').then(r => r.json());
-    const sel = document.getElementById('filter-maker');
-    while (sel.options.length > 1) sel.remove(1);
-    makers.forEach(m => {
-      const opt = document.createElement('option');
-      opt.value = m; opt.textContent = m;
-      sel.appendChild(opt);
-    });
+    msFilterOptions['제조사'] = makers;
   } catch {}
 }
 
@@ -819,9 +902,10 @@ function renderTable() {
 const DEFAULT_COL_ORDER = ['사업장','사용자명','사번','부서명','상태','모델명','자산번호','기기종류','제조사','시리얼번호','도입일','사용연수','관리'];
 const COL_LABELS = { '시리얼번호': 'S/N' };
 const STICKY_COUNT = 3;
+// 컬럼 헤더 인라인 필터에서 사용할 멀티 셀렉트 필터 키
 const FILTER_COLS = {
-  '부서명': 'filter-dept', '상태': 'filter-status',
-  '사업장': 'filter-site', '기기종류': 'filter-device', '제조사': 'filter-maker',
+  '부서명': '부서명', '상태': '상태',
+  '사업장': '사업장', '기기종류': '기기종류', '제조사': '제조사',
 };
 
 function getColOrder() {
@@ -1008,51 +1092,47 @@ const COL_FILTER_OPTIONS = {
 
 let _colFilterActive = null; // { colKey, selectId, btnEl }
 
-// 컬럼 헤더의 필터 버튼 클릭 시 팝업 표시
-function toggleColFilter(colKey, selectId, btnEl) {
+// 컬럼 헤더의 필터 버튼 클릭 시 팝업 표시 (멀티 셀렉트)
+function toggleColFilter(colKey, _unused, btnEl) {
   const popup = document.getElementById('col-filter-popup');
   // 이미 같은 컬럼 팝업이 열려있으면 닫기
   if (_colFilterActive && _colFilterActive.colKey === colKey) {
     closeColFilter(); return;
   }
   closeColFilter();
-  _colFilterActive = { colKey, selectId, btnEl };
+  _colFilterActive = { colKey, btnEl };
   btnEl.classList.add('active');
 
-  // 옵션 목록 결정 (부서명·제조사는 드롭다운에서 동적으로 가져옴)
-  let opts = COL_FILTER_OPTIONS[colKey];
-  if (colKey === '부서명') {
-    const sel = document.getElementById('filter-dept');
-    opts = Array.from(sel.options).map(o => o.value).filter(v => v);
-  }
-  if (colKey === '제조사') {
-    const sel = document.getElementById('filter-maker');
-    opts = Array.from(sel.options).map(o => o.value).filter(v => v);
-  }
+  const opts = msFilterOptions[colKey] || [];
+  const selected = msFilterState[colKey];
+  popup.innerHTML = opts.map(o => `<label class="col-filter-opt">
+      <input type="checkbox" value="${o.replace(/"/g, '&quot;')}" ${selected.has(o) ? 'checked' : ''} style="margin-right:6px;accent-color:#007AFF">
+      <span>${o}</span>
+    </label>`).join('') +
+    `<div style="border-top:1px solid #F2F2F7;padding:6px 10px;text-align:right">
+       <button type="button" data-act="clear" style="background:none;border:none;color:#007AFF;font-size:12px;cursor:pointer;font-family:inherit">선택 해제</button>
+     </div>`;
 
-  const curVal = document.getElementById(selectId)?.value || '';
-  popup.innerHTML = [
-    `<div class="col-filter-opt ${curVal===''?'selected':''}" data-val="">
-      <span class="opt-check">${curVal===''?'✓':''}</span> 전체
-    </div>`,
-    ...opts.map(o => `<div class="col-filter-opt ${curVal===o?'selected':''}" data-val="${o}">
-      <span class="opt-check">${curVal===o?'✓':''}</span> ${o}
-    </div>`)
-  ].join('');
-
-  popup.querySelectorAll('.col-filter-opt').forEach(el => {
-    el.addEventListener('click', () => {
-      const sel = document.getElementById(selectId);
-      if (sel) sel.value = el.dataset.val;
-      closeColFilter();
+  popup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('click', e => e.stopPropagation());
+    cb.addEventListener('change', () => {
+      if (cb.checked) selected.add(cb.value);
+      else selected.delete(cb.value);
+      updateMsButton(colKey);
       loadAssets();
     });
+  });
+  popup.querySelector('[data-act="clear"]').addEventListener('click', () => {
+    msFilterState[colKey] = new Set();
+    updateMsButton(colKey);
+    closeColFilter();
+    loadAssets();
   });
 
   // 팝업 위치: 버튼 바로 아래
   const rect = btnEl.getBoundingClientRect();
   popup.style.top  = (rect.bottom + 4) + 'px';
-  popup.style.left = Math.min(rect.left, window.innerWidth - 180) + 'px';
+  popup.style.left = Math.min(rect.left, window.innerWidth - 200) + 'px';
   popup.classList.remove('hidden');
 }
 

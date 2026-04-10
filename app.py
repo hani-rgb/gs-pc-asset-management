@@ -313,32 +313,39 @@ def get_assets():
 
         # 쿼리 파라미터에서 필터 조건 추출
         search    = request.args.get('search', '')
-        site      = request.args.get('사업장', '')
-        status    = request.args.get('상태', '')
         old_years = request.args.get('old_years', '')
-        maker     = request.args.get('제조사', '')
-        device    = request.args.get('기기종류', '')
-        dept      = request.args.get('부서명', '')
+
+        # 멀티 셀렉트 필터: getlist로 다중 값 수신, 없으면 단일 값(get)도 호환
+        def _multi(key):
+            vals = request.args.getlist(key)
+            if not vals:
+                v = request.args.get(key, '')
+                vals = [v] if v else []
+            return [v for v in vals if v]
+
+        sites   = _multi('사업장')
+        statuses = _multi('상태')
+        makers  = _multi('제조사')
+        devices = _multi('기기종류')
+        depts   = _multi('부서명')
 
         # 통합 검색: 사용자명, 부서명, 모델명, 시리얼번호, 사번, 이메일, 자산번호 대상
         if search:
             query += ' AND (사용자명 ILIKE %s OR 부서명 ILIKE %s OR 모델명 ILIKE %s OR 시리얼번호 ILIKE %s OR 사번 ILIKE %s OR 이메일 ILIKE %s OR 자산번호 ILIKE %s)'
             params.extend([f'%{search}%'] * 7)
-        if site:
-            query += ' AND 사업장 = %s'
-            params.append(site)
-        if status:
-            query += ' AND 상태 = %s'
-            params.append(status)
-        if maker:
-            query += ' AND 제조사 = %s'
-            params.append(maker)
-        if device:
-            query += ' AND 기기종류 = %s'
-            params.append(device)
-        if dept:
-            query += ' AND 부서명 = %s'
-            params.append(dept)
+
+        def _add_in(col, vals):
+            nonlocal query
+            if not vals: return
+            placeholders = ','.join(['%s'] * len(vals))
+            query += f' AND {col} IN ({placeholders})'
+            params.extend(vals)
+
+        _add_in('사업장', sites)
+        _add_in('상태', statuses)
+        _add_in('제조사', makers)
+        _add_in('기기종류', devices)
+        _add_in('부서명', depts)
 
         # 연식 필터: old_years(교체 대상) 또는 age_range(구간별) 중 하나 적용
         # age_range 형식: "lt1"(1년 미만), "1to2"(1~2년), "NtoM"(N~M년) 등 동적
@@ -695,8 +702,9 @@ def index():
 
 if __name__ == '__main__':
     init_db()
+    port = int(os.environ.get('PORT', '5001'))
     print('=' * 50)
     print('  PC 자산관리 시스템 시작')
-    print('  http://localhost:5001')
+    print(f'  http://localhost:{port}')
     print('=' * 50)
-    app.run(debug=False, port=5001)
+    app.run(debug=False, port=port)

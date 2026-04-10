@@ -277,6 +277,47 @@ select.filter {
 }
 select.filter:focus { outline: none; border-color: #1a3a5c; }
 
+/* 멀티 셀렉트 필터 */
+.ms-filter { position: relative; display: inline-block; }
+.ms-btn {
+  padding: 8px 30px 8px 12px; border: 1px solid #ddd; border-radius: 6px;
+  font-size: 14px; font-family: inherit; background: white; cursor: pointer;
+  color: #1D1D1F; min-width: 110px; text-align: left;
+  position: relative; transition: border-color 0.15s;
+}
+.ms-btn:hover { border-color: #c0c0c0; }
+.ms-btn.has-selection { border-color: #007AFF; color: #007AFF; font-weight: 600; }
+.ms-btn::after {
+  content: '▾'; position: absolute; right: 10px; top: 50%;
+  transform: translateY(-50%); font-size: 10px; color: #8E8E93;
+}
+.ms-panel {
+  display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 600;
+  background: white; border: 1px solid #e2e8f0; border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  min-width: 200px; max-height: 320px; overflow-y: auto;
+  padding: 6px 0;
+}
+.ms-panel.open { display: block; }
+.ms-opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; font-size: 13px; color: #1D1D1F;
+  cursor: pointer; transition: background 0.1s;
+}
+.ms-opt:hover { background: #F5F5F7; }
+.ms-opt input[type="checkbox"] { margin: 0; cursor: pointer; accent-color: #007AFF; }
+.ms-opt.empty { color: #8E8E93; cursor: default; }
+.ms-opt.empty:hover { background: transparent; }
+.ms-panel-actions {
+  border-top: 1px solid #F2F2F7; padding: 6px 10px;
+  display: flex; gap: 6px; justify-content: space-between;
+}
+.ms-panel-actions button {
+  background: none; border: none; color: #007AFF; font-size: 12px;
+  cursor: pointer; padding: 4px 8px; font-family: inherit; border-radius: 4px;
+}
+.ms-panel-actions button:hover { background: #F0F6FF; }
+
 .result-info { font-size: 13px; color: #888; margin-bottom: 8px; }
 
 /* 테이블 */
@@ -285,7 +326,7 @@ select.filter:focus { outline: none; border-color: #1a3a5c; }
   box-shadow: 0 1px 4px rgba(0,0,0,0.06); overflow-x: auto;
   position: relative;
 }
-table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed;
+table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 13px; table-layout: auto;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Pretendard Variable', sans-serif;
 }
 thead th {
@@ -294,6 +335,21 @@ thead th {
   border-bottom: 1px solid #E5E5EA; font-size: 12px; letter-spacing: -0.1px;
   position: relative;
 }
+
+/* 컬럼별 최소 너비 */
+#asset-table th[data-col="사용자명"], #asset-table td[data-col="사용자명"] { min-width: 80px; }
+#asset-table th[data-col="부서명"],   #asset-table td[data-col="부서명"]   { min-width: 120px; }
+#asset-table th[data-col="상태"],     #asset-table td[data-col="상태"]     { min-width: 70px; }
+#asset-table th[data-col="모델명"],   #asset-table td[data-col="모델명"]   { min-width: 130px; white-space: nowrap; }
+#asset-table th[data-col="시리얼번호"], #asset-table td[data-col="시리얼번호"] { min-width: 150px; white-space: nowrap; }
+#asset-table th[data-col="도입일"],   #asset-table td[data-col="도입일"]   { min-width: 90px; white-space: nowrap; }
+#asset-table th[data-col="사용연수"], #asset-table td[data-col="사용연수"] { min-width: 80px; }
+#asset-table th[data-col="제조사"],   #asset-table td[data-col="제조사"]   { min-width: 80px; }
+#asset-table th[data-col="기기종류"], #asset-table td[data-col="기기종류"] { min-width: 80px; }
+#asset-table th[data-col="사업장"],   #asset-table td[data-col="사업장"]   { min-width: 80px; }
+#asset-table th[data-col="사번"],     #asset-table td[data-col="사번"]     { min-width: 80px; }
+#asset-table th[data-col="자산번호"], #asset-table td[data-col="자산번호"] { min-width: 90px; }
+#asset-table th[data-col="관리"],     #asset-table td[data-col="관리"]     { min-width: 70px; }
 thead th.sortable { cursor: pointer; user-select: none; }
 thead th.sortable:hover { background: #EBEBF0; }
 

@@ -148,37 +148,16 @@
     <div class="toolbar">
       <input type="text" class="search-box" id="search-input"
         placeholder="사용자명, 부서명, 모델명, S/N, 자산번호로 검색..." oninput="debounceSearch()">
-      <select class="filter" id="filter-site" onchange="loadAssets()">
-        <option value="">전체 사업장</option>
-        <option value="GS에너지">GS에너지</option>
-        <option value="GS파워">GS파워</option>
-        <option value="인천종합에너지">인천종합에너지</option>
-      </select>
-      <select class="filter" id="filter-status" onchange="loadAssets()">
-        <option value="">전체 상태</option>
-        <option value="사용중">사용중</option>
-        <option value="대여중">대여중</option>
-        <option value="재고">재고</option>
-        <option value="반납">반납</option>
-        <option value="폐기">폐기</option>
-      </select>
-      <select class="filter" id="filter-maker" onchange="loadAssets()">
-        <option value="">전체 제조사</option>
-      </select>
-      <select class="filter" id="filter-device" onchange="loadAssets()">
-        <option value="">전체 기기종류</option>
-        <option value="노트북">노트북</option>
-        <option value="데스크톱">데스크톱</option>
-        <option value="Mac">Mac</option>
-      </select>
-      <select class="filter" id="filter-dept" onchange="loadAssets()">
-        <option value="">전체 부서</option>
-      </select>
+      <div class="ms-filter" data-key="사업장" data-label="사업장"></div>
+      <div class="ms-filter" data-key="상태" data-label="상태"></div>
+      <div class="ms-filter" data-key="제조사" data-label="제조사"></div>
+      <div class="ms-filter" data-key="기기종류" data-label="기기종류"></div>
+      <div class="ms-filter" data-key="부서명" data-label="부서"></div>
       <select class="filter" id="filter-old" onchange="loadAssets()">
         <option value="">전체 (연수 무관)</option>
         <option value="old">교체 검토 대상</option>
       </select>
-      <button class="btn btn-secondary" onclick="resetFilters()">초기화</button>
+      <button class="btn btn-secondary" onclick="resetFilters()">전체 해제</button>
       <button class="btn btn-primary admin-only" onclick="openRegisterModal()">+ 자산 등록</button>
       <button class="btn-apple-green" onclick="downloadExcel()">📥 엑셀 다운로드</button>
     </div>
