@@ -142,9 +142,12 @@ def login():
     if not username or not password:
         return jsonify({'success': False, 'message': '아이디와 비밀번호를 입력하세요.'}), 400
 
-    conn = get_db()
-    row = fetchone(conn, 'SELECT * FROM users WHERE username = %s', (username,))
-    conn.close()
+    try:
+        conn = get_db()
+        row = fetchone(conn, 'SELECT id, username, password, role, name FROM users WHERE username = %s', (username,))
+        conn.close()
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'DB 오류: {str(e)}'}), 500
 
     if not row or not check_password_hash(row['password'], password):
         return jsonify({'success': False, 'message': '아이디 또는 비밀번호가 올바르지 않습니다.'}), 401

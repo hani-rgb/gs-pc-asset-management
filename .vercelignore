@@ -1,0 +1,11 @@
+vendor/
+.venv/
+.env
+*.db
+*.sqlite
+*.xlsx
+*.xls
+*.csv
+__pycache__/
+.git/
+.claude/

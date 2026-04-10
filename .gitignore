@@ -54,3 +54,4 @@ desktop.ini
 test_upload.py
 import_excel.py
 *.bat
+.vercel
