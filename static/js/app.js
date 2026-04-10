@@ -650,11 +650,12 @@ function renderFilterTags() {
   });
 }
 
-// 부서 드롭다운 옵션 동적 로드
+// 부서 드롭다운 옵션 동적 로드 (중복 방지: 첫 번째 "전체" 옵션 제외하고 초기화 후 추가)
 async function loadDeptFilter() {
   try {
     const depts = await authFetch('/api/filters/departments').then(r => r.json());
     const sel = document.getElementById('filter-dept');
+    while (sel.options.length > 1) sel.remove(1);
     depts.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d; opt.textContent = d;
@@ -663,11 +664,12 @@ async function loadDeptFilter() {
   } catch {}
 }
 
-// 제조사 드롭다운 옵션 동적 로드
+// 제조사 드롭다운 옵션 동적 로드 (중복 방지: 첫 번째 "전체" 옵션 제외하고 초기화 후 추가)
 async function loadMakerFilter() {
   try {
     const makers = await authFetch('/api/filters/makers').then(r => r.json());
     const sel = document.getElementById('filter-maker');
+    while (sel.options.length > 1) sel.remove(1);
     makers.forEach(m => {
       const opt = document.createElement('option');
       opt.value = m; opt.textContent = m;
