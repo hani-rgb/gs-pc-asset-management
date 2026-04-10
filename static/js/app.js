@@ -458,14 +458,15 @@ function renderAgeDonut(elId, rows, total) {
     </div>`;
   }).join('');
 
-  const ageLabel = topAge['구간'] || '';
-  const ageLabelFs = ageLabel.length > 4 ? 10 : 12;
+  // 중앙 텍스트: 교체 검토 대상(warnLabel) 수량 고정 표시
+  const warnRow = rows.find(r => r['구간'] === warnLabel);
+  const warnCount = warnRow ? warnRow['수량'] : 0;
   el.innerHTML = `<div class="donut-chart-row">
     <div class="donut-svg-wrap"><svg viewBox="0 0 140 140" class="donut-svg">
       <circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#F2F2F7" stroke-width="${SW}"/>
       ${segs}
-      <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="28" font-weight="700" fill="#1D1D1F" font-family="${FN}">${topAge['수량'].toLocaleString()}</text>
-      <text x="${cx}" y="${cy + 16}" text-anchor="middle" font-size="${ageLabelFs}" font-weight="400" fill="#6E6E73" font-family="${FN}">${ageLabel}</text>
+      <text x="${cx}" y="${cy - 2}" text-anchor="middle" font-size="28" font-weight="700" fill="${AGE_WARN}" font-family="${FN}">${warnCount.toLocaleString()}</text>
+      <text x="${cx}" y="${cy + 16}" text-anchor="middle" font-size="10" font-weight="400" fill="#6E6E73" font-family="${FN}">교체 검토 대상</text>
     </svg></div>
     <div class="donut-legend">${legend}</div>
   </div>`;

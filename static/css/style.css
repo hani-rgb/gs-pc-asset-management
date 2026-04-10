@@ -38,9 +38,8 @@ body {
   display: flex; align-items: center; gap: 10px;
 }
 .navbar-brand .brand-logo {
-  height: 36px; width: auto;
+  height: 30px; width: auto;
 }
-.navbar-brand .brand-gs { color: #60a5fa; font-weight: 700; }
 .navbar-brand .brand-sub { color: rgba(255,255,255,0.75); font-weight: 500; font-size: 15px; }
 .nav-tabs { display: flex; gap: 2px; flex: 1; flex-shrink: 0; }
 .nav-tab {
