@@ -555,9 +555,21 @@ tbody tr:last-child td { border-bottom: none; }
   z-index: 2000; align-items: center; justify-content: center;
 }
 .login-overlay.hidden { display: none; }
+.login-wrap {
+  display: flex; flex-direction: column; align-items: center; gap: 28px;
+  width: 400px; max-width: 92vw;
+}
+.login-header-logo svg {
+  height: 44px; width: auto; display: block;
+}
+.login-header-sub {
+  text-align: center; margin-top: 10px;
+  font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.7);
+  letter-spacing: 0.5px;
+}
 .login-box {
   background: white; border-radius: 20px;
-  padding: 48px 44px 40px; width: 400px; max-width: 92vw;
+  padding: 40px 44px 40px; width: 100%;
   box-shadow: 0 24px 64px rgba(0,0,0,0.4); text-align: center;
 }
 .login-logo { font-size: 40px; margin-bottom: 16px; }
